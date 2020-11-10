@@ -44,6 +44,22 @@ class image_converter:
     except CvBridgeError as e:
       print(e)
 
+
+  def detect_yellow_center(self, image):
+        # Color boundaries
+        yellow_lower = np.array([0,75,75])
+        yellow_upper = np.array([50,255,255])
+        # Thresholding and removing noise
+        thresholded = cv2.inRange(image, yellow_lower, yellow_upper)
+        thresholded = cv2.erode(thresholded, np.ones(3, np.uint8))
+        thresholded = cv2.dilate(thresholded, np.ones(3, np.uint8))
+        # Finding the center point
+        moments = cv2.moments(thresholded)
+        cx = int(moments['m10']/moments['m00'])
+        cy = int(moments['m01']/moments['m00'])
+        return np.array([cx,cy])
+
+
 # call the class
 def main(args):
   ic = image_converter()
