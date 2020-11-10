@@ -36,6 +36,12 @@ class image_converter:
     # Uncomment if you want to save the image
     #cv2.imwrite('image_copy.png', cv_image)
 
+    c = self.detect_yellow_center(self.cv_image1)
+    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
+    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
+    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
+
+
     im1=cv2.imshow('window1', self.cv_image1)
     cv2.waitKey(1)
     # Publish the results
@@ -48,11 +54,15 @@ class image_converter:
   def detect_yellow_center(self, image):
         # Color boundaries
         yellow_lower = np.array([0,75,75])
-        yellow_upper = np.array([50,255,255])
+        yellow_upper = np.array([30,255,255])
         # Thresholding and removing noise
         thresholded = cv2.inRange(image, yellow_lower, yellow_upper)
         thresholded = cv2.erode(thresholded, np.ones(3, np.uint8))
         thresholded = cv2.dilate(thresholded, np.ones(3, np.uint8))
+
+        cv2.imshow('window3', thresholded)
+        cv2.waitKey(1)
+
         # Finding the center point
         moments = cv2.moments(thresholded)
         cx = int(moments['m10']/moments['m00'])
