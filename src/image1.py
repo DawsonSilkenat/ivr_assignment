@@ -36,14 +36,14 @@ class image_converter:
     # Uncomment if you want to save the image
     #cv2.imwrite('image_copy.png', cv_image)
 
-    c = detect_yellow_center(self.cv_image1)
+    c = detect_orange_center(self.cv_image1)
     self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
     self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
     self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
 
 
-    im1=cv2.imshow('window1', self.cv_image1)
-    cv2.waitKey(1)
+    # im1=cv2.imshow('window1', self.cv_image1)
+    # cv2.waitKey(1)
     # Publish the results
     try: 
       self.image_pub1.publish(self.bridge.cv2_to_imgmsg(self.cv_image1, "bgr8"))
@@ -100,6 +100,23 @@ def detect_red_center(image):
   thresholded = cv2.inRange(image, red_lower, red_upper)
   thresholded = cv2.erode(thresholded, np.ones(3, np.uint8))
   thresholded = cv2.dilate(thresholded, np.ones(3, np.uint8))
+  # Finding the center point
+  moments = cv2.moments(thresholded)
+  cx = int(moments['m10']/moments['m00'])
+  cy = int(moments['m01']/moments['m00'])
+  return np.array([cx,cy])
+
+def detect_orange_center(image):
+  # Color boundaries
+  orange_lower = np.array([0,50,50])
+  orange_upper = np.array([50,80,255])
+  # Thresholding and removing noise
+  thresholded = cv2.inRange(image, orange_lower, orange_upper)
+  thresholded = cv2.erode(thresholded, np.ones(3, np.uint8))
+  thresholded = cv2.dilate(thresholded, np.ones(3, np.uint8))
+  
+  cv2.imshow('window3', thresholded)
+  cv2.waitKey(1)
   # Finding the center point
   moments = cv2.moments(thresholded)
   cx = int(moments['m10']/moments['m00'])
