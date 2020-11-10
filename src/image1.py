@@ -115,8 +115,19 @@ def detect_orange_center(image):
   thresholded = cv2.erode(thresholded, np.ones(3, np.uint8))
   thresholded = cv2.dilate(thresholded, np.ones(3, np.uint8))
   
-  cv2.imshow('window3', thresholded)
+  ones = np.argwhere(thresholded)
+  y_max = np.max(ones[:,1])
+  y_min = np.min(ones[:,1])
+  x_max = np.max(ones[:,0])
+  x_min = np.min(ones[:,0])
+
+  cv2.imshow("all", thresholded)
+
+  thresholded = thresholded[x_min - 10 : x_max + 10, y_min - 10: y_max + 10]
+
+  cv2.imshow("target", thresholded)
   cv2.waitKey(1)
+
   # Finding the center point
   moments = cv2.moments(thresholded)
   cx = int(moments['m10']/moments['m00'])
