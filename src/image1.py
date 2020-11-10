@@ -36,7 +36,7 @@ class image_converter:
     # Uncomment if you want to save the image
     #cv2.imwrite('image_copy.png', cv_image)
 
-    c = self.detect_yellow_center(self.cv_image1)
+    c = self.detect_red_center(self.cv_image1)
     self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
     self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
     self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
@@ -59,10 +59,48 @@ class image_converter:
         thresholded = cv2.inRange(image, yellow_lower, yellow_upper)
         thresholded = cv2.erode(thresholded, np.ones(3, np.uint8))
         thresholded = cv2.dilate(thresholded, np.ones(3, np.uint8))
+        # Finding the center point
+        moments = cv2.moments(thresholded)
+        cx = int(moments['m10']/moments['m00'])
+        cy = int(moments['m01']/moments['m00'])
+        return np.array([cx,cy])
 
-        cv2.imshow('window3', thresholded)
-        cv2.waitKey(1)
+  def detect_blue_center(self, image):
+        # Color boundaries
+        blue_lower = np.array([75,0,0])
+        blue_upper = np.array([255,75,75])
+        # Thresholding and removing noise
+        thresholded = cv2.inRange(image, blue_lower, blue_upper)
+        thresholded = cv2.erode(thresholded, np.ones(3, np.uint8))
+        thresholded = cv2.dilate(thresholded, np.ones(3, np.uint8))
+        # Finding the center point
+        moments = cv2.moments(thresholded)
+        cx = int(moments['m10']/moments['m00'])
+        cy = int(moments['m01']/moments['m00'])
+        return np.array([cx,cy])
+    
+  def detect_green_center(self, image):
+        # Color boundaries
+        green_lower = np.array([0,75,0])
+        green_upper = np.array([75,255,75])
+        # Thresholding and removing noise
+        thresholded = cv2.inRange(image, green_lower, green_upper)
+        thresholded = cv2.erode(thresholded, np.ones(3, np.uint8))
+        thresholded = cv2.dilate(thresholded, np.ones(3, np.uint8))
+        # Finding the center point
+        moments = cv2.moments(thresholded)
+        cx = int(moments['m10']/moments['m00'])
+        cy = int(moments['m01']/moments['m00'])
+        return np.array([cx,cy])
 
+  def detect_red_center(self, image):
+        # Color boundaries
+        red_lower = np.array([0,0,100])
+        red_upper = np.array([50,50,255])
+        # Thresholding and removing noise
+        thresholded = cv2.inRange(image, red_lower, red_upper)
+        thresholded = cv2.erode(thresholded, np.ones(3, np.uint8))
+        thresholded = cv2.dilate(thresholded, np.ones(3, np.uint8))
         # Finding the center point
         moments = cv2.moments(thresholded)
         cx = int(moments['m10']/moments['m00'])
