@@ -23,7 +23,12 @@ class image_converter:
     self.image_sub1 = rospy.Subscriber("/camera1/robot/image_raw",Image,self.callback1)
     # initialize the bridge between openCV and ROS
     self.bridge = CvBridge()
+    # initialize publishers to send inputs to the robot's joints
+    self.joint2_pub = rospy.Publisher("/robot/joint2_position_controller/command", Float64, queue_size=10)
+    self.joint3_pub = rospy.Publisher("/robot/joint3_position_controller/command", Float64, queue_size=10)
+    self.joint4_pub = rospy.Publisher("/robot/joint4_position_controller/command", Float64, queue_size=10)
 
+    self.start_time = rospy.get_time()
 
   # Recieve data from camera 1, process it, and publish
   def callback1(self,data):
@@ -41,14 +46,28 @@ class image_converter:
     self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
     self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
 
-
-    # im1=cv2.imshow('window1', self.cv_image1)
-    # cv2.waitKey(1)
+    im1=cv2.imshow('window1', self.cv_image1)
+    cv2.waitKey(1)
     # Publish the results
     try: 
       self.image_pub1.publish(self.bridge.cv2_to_imgmsg(self.cv_image1, "bgr8"))
     except CvBridgeError as e:
       print(e)
+
+    # Publish the robot's joint inputs
+    self.joint2 = Float64()
+    self.joint3 = Float64()
+    self.joint4 = Float64()
+
+    current_time = rospy.get_time() - self.start_time
+
+    self.joint2.data = (np.pi / 2) * np.sin((np.pi / 15) * current_time)
+    self.joint3.data = (np.pi / 2) * np.sin((np.pi / 18) * current_time)
+    self.joint4.data = (np.pi / 2) * np.sin((np.pi / 20) * current_time)
+
+    self.joint2_pub.publish(self.joint2)
+    self.joint3_pub.publish(self.joint3)
+    self.joint4_pub.publish(self.joint4)
 
 def detect_yellow_center(image):
   # Color boundaries
