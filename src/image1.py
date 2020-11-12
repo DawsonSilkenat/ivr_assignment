@@ -41,6 +41,9 @@ class image_converter:
     # Uncomment if you want to save the image
     #cv2.imwrite('image_copy.png', cv_image)
 
+    # Used to test rgb_normalization function
+    rgb_normalize(self.cv_image1)
+
     c = detect_orange_center(self.cv_image1)
     self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
     self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
@@ -68,6 +71,24 @@ class image_converter:
     self.joint2_pub.publish(self.joint2)
     self.joint3_pub.publish(self.joint3)
     self.joint4_pub.publish(self.joint4)
+
+def rgb_normalize(image):
+  # Use RGB normalization to handle the varying lighting
+  rgb_norm_image = np.zeros(np.shape(image),np.float64)
+
+  b,g,r = cv2.split(image)
+
+  rgb_norm_image[:,:,0] = np.divide(b, b + g + 1.2*r + np.ones(np.shape(r))) * 255 # Add one to each element to deal with division by 0
+  rgb_norm_image[:,:,1] = np.divide(g, b + g + 1.2*r + np.ones(np.shape(r))) * 255
+  rgb_norm_image[:,:,2] = np.divide(r, b + g + 1.2*r + np.ones(np.shape(r))) * 255
+
+  rgb_norm_image = cv2.convertScaleAbs(rgb_norm_image)
+
+  # imshow used for testing purposes:
+  cv2.imshow('normalization', rgb_norm_image)
+  cv2.waitKey(1)
+
+  return rgb_norm_image
 
 def detect_yellow_center(image):
   # Color boundaries
