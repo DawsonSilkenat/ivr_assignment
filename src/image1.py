@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
-from std_msgs.msg import Float64MultiArray, Float64
+from std_msgs.msg import Float64MultiArray, Float64, Int64MultiArray
 from cv_bridge import CvBridge, CvBridgeError
 
 
@@ -30,6 +30,10 @@ class image_converter:
 
     self.start_time = rospy.get_time()
 
+    # initialize subscribers to recieve blob centers from image2
+    self.yellow_blob_sub = rospy.Subscriber("/camera2/yellow_blob_data", Int64MultiArray, self.im2_update)
+
+
   # Recieve data from camera 1, process it, and publish
   def callback1(self,data):
     # Recieve the image
@@ -38,6 +42,8 @@ class image_converter:
     except CvBridgeError as e:
       print(e)
     
+    print()
+
     # Uncomment if you want to save the image
     #cv2.imwrite('image_copy.png', cv_image)
 
@@ -66,8 +72,8 @@ class image_converter:
 
     c = detect_red_center(image)
     self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
-    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
-    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
+    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 255
+    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 0
 
     cv2.imshow('window1', self.cv_image1)
     # cv2.imshow('window2', image)
@@ -92,6 +98,10 @@ class image_converter:
     self.joint2_pub.publish(self.joint2)
     self.joint3_pub.publish(self.joint3)
     self.joint4_pub.publish(self.joint4)
+
+  def im2_update(self,data):
+    print(data)
+
 
 def rgb_normalize(image):
   # Use RGB normalization to handle the varying lighting
@@ -121,10 +131,13 @@ def detect_yellow_center(image):
   thresholded = cv2.erode(thresholded, np.ones(3, np.uint8))
   thresholded = cv2.dilate(thresholded, np.ones(3, np.uint8))
   # Finding the center point
-  moments = cv2.moments(thresholded)
-  cx = int(moments['m10']/moments['m00'])
-  cy = int(moments['m01']/moments['m00'])
-  return np.array([cx,cy])
+  try:
+    moments = cv2.moments(thresholded)
+    cx = int(moments['m10']/moments['m00'])
+    cy = int(moments['m01']/moments['m00'])
+    return np.array([cx,cy])
+  except:
+    return np.array([-1,-1])
 
 def detect_blue_center(image):
   # Color boundaries
@@ -135,10 +148,13 @@ def detect_blue_center(image):
   thresholded = cv2.erode(thresholded, np.ones(3, np.uint8))
   thresholded = cv2.dilate(thresholded, np.ones(3, np.uint8))
   # Finding the center point
-  moments = cv2.moments(thresholded)
-  cx = int(moments['m10']/moments['m00'])
-  cy = int(moments['m01']/moments['m00'])
-  return np.array([cx,cy])
+  try:
+    moments = cv2.moments(thresholded)
+    cx = int(moments['m10']/moments['m00'])
+    cy = int(moments['m01']/moments['m00'])
+    return np.array([cx,cy])
+  except:
+    return np.array([-1,-1])
     
 def detect_green_center(image):
   # Color boundaries
@@ -149,10 +165,13 @@ def detect_green_center(image):
   thresholded = cv2.erode(thresholded, np.ones(3, np.uint8))
   thresholded = cv2.dilate(thresholded, np.ones(3, np.uint8))
   # Finding the center point
-  moments = cv2.moments(thresholded)
-  cx = int(moments['m10']/moments['m00'])
-  cy = int(moments['m01']/moments['m00'])
-  return np.array([cx,cy])
+  try:
+    moments = cv2.moments(thresholded)
+    cx = int(moments['m10']/moments['m00'])
+    cy = int(moments['m01']/moments['m00'])
+    return np.array([cx,cy])
+  except:
+    return np.array([-1,-1])
 
 def detect_red_center(image):
   # Color boundaries
@@ -167,10 +186,13 @@ def detect_red_center(image):
   cv2.waitKey(1)
 
   # Finding the center point
-  moments = cv2.moments(thresholded)
-  cx = int(moments['m10']/moments['m00'])
-  cy = int(moments['m01']/moments['m00'])
-  return np.array([cx,cy])
+  try:
+    moments = cv2.moments(thresholded)
+    cx = int(moments['m10']/moments['m00'])
+    cy = int(moments['m01']/moments['m00'])
+    return np.array([cx,cy])
+  except:
+    return np.array([-1,-1])
 
 def detect_orange_center(image):
   # Color boundaries
@@ -195,10 +217,13 @@ def detect_orange_center(image):
   # cv2.waitKey(1)
 
   # Finding the center point
-  moments = cv2.moments(thresholded)
-  cx = int(moments['m10']/moments['m00'])
-  cy = int(moments['m01']/moments['m00'])
-  return np.array([cx + x_min, cy + y_min])
+  try:
+    moments = cv2.moments(thresholded)
+    cx = int(moments['m10']/moments['m00'])
+    cy = int(moments['m01']/moments['m00'])
+    return np.array([cx,cy])
+  except:
+    return np.array([-1,-1])
 
 
 # call the class
