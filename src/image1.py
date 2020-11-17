@@ -217,7 +217,7 @@ def detect_orange_center(image):
     moments = cv2.moments(thresholded)
     cx = int(moments['m10']/moments['m00'])
     cy = int(moments['m01']/moments['m00'])
-    return np.array([cx,cy])
+    return np.array([cx + x_min,cy + y_min])
   except:
     return np.array([-1,-1])
 
