@@ -40,8 +40,6 @@ class image_converter:
       print(e)
     # Uncomment if you want to save the image
     #cv2.imwrite('image_copy.png', cv_image)
-    im2=cv2.imshow('window2', self.cv_image2)
-    cv2.waitKey(1)
 
     # Publish blob data
     self.blob_centers = Int64MultiArray()
@@ -54,6 +52,33 @@ class image_converter:
 
     self.blob_center_publisher.publish(self.blob_centers)
 
+    c = detect_orange_center(image)
+    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
+    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
+    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
+
+    c = detect_yellow_center(image)
+    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
+    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
+    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
+
+    c = detect_blue_center(image)
+    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
+    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
+    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
+
+    c = detect_green_center(image)
+    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
+    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
+    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
+
+    c = detect_red_center(image)
+    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
+    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 255
+    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 0
+
+    im2=cv2.imshow('window2', self.cv_image2)
+    cv2.waitKey(1)
 
     # Publish the results
     try: 

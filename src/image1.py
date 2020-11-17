@@ -34,6 +34,9 @@ class image_converter:
     self.blob_subscriber = rospy.Subscriber("/camera2/blob_data", Int64MultiArray, self.im2_update)
     self.blob_location = np.zeros((4,3))
 
+    # meter value of a single unit
+    self.distance_ratio = None
+
 
   # Recieve data from camera 1, process it, and publish
   def callback1(self,data):
@@ -48,32 +51,32 @@ class image_converter:
     # Uncomment if you want to save the image
     #cv2.imwrite('image_copy.png', cv_image)
 
-    # image = rgb_normalize(self.cv_image1)
+    image = rgb_normalize(self.cv_image1)
 
-    # c = detect_orange_center(image)
-    # self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
-    # self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
-    # self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
+    c = detect_orange_center(image)
+    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
+    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
+    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
 
-    # c = detect_yellow_center(image)
-    # self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
-    # self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
-    # self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
+    c = detect_yellow_center(image)
+    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
+    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
+    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
 
-    # c = detect_blue_center(image)
-    # self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
-    # self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
-    # self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
+    c = detect_blue_center(image)
+    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
+    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
+    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
 
-    # c = detect_green_center(image)
-    # self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
-    # self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
-    # self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
+    c = detect_green_center(image)
+    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
+    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
+    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
 
-    # c = detect_red_center(image)
-    # self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
-    # self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 255
-    # self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 0
+    c = detect_red_center(image)
+    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
+    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 255
+    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 0
 
     print(self.blob_location)
 
@@ -97,11 +100,12 @@ class image_converter:
     self.joint3.data = (np.pi / 2) * np.sin((np.pi / 18) * current_time)
     self.joint4.data = (np.pi / 2) * np.sin((np.pi / 20) * current_time)
 
-    self.joint2_pub.publish(self.joint2)
-    self.joint3_pub.publish(self.joint3)
-    self.joint4_pub.publish(self.joint4)
+    #self.joint2_pub.publish(self.joint2)
+    #self.joint3_pub.publish(self.joint3)
+    #self.joint4_pub.publish(self.joint4)
 
-  def im2_update(self,data):
+  def im2_update(self,data):  
+
     image1 = rgb_normalize(self.cv_image1)
     
     center_info_1 = [detect_yellow_center(image1), detect_blue_center(image1), detect_green_center(image1), detect_red_center(image1)]
@@ -111,8 +115,18 @@ class image_converter:
       if(center_info_1[i][0] != -1 and center_info_2[i][0] != -1):
         self.blob_location[i,0] = center_info_2[i,0] - center_info_2[0,0]
         self.blob_location[i,1] = center_info_1[i][0] - center_info_1[0][0]
-        self.blob_location[i,2] = (center_info_2[i,1] - center_info_2[0,1] + center_info_1[i][1] - center_info_1[0][1])/ 2
+        self.blob_location[i,2] = -(center_info_2[i,1] - center_info_2[0,1] + center_info_1[i][1] - center_info_1[0][1])/ 2
 
+    if self.distance_ratio is None:
+      # meter value for a single unit
+      self.distance_ratio = (2.5 / np.linalg.norm(self.blob_location[1,:] - self.blob_location[0,:]) + 
+                            3.5 / np.linalg.norm(self.blob_location[2,:] - self.blob_location[1,:]) +
+                            3 / np.linalg.norm(self.blob_location[3,:] - self.blob_location[2,:])) / 3
+
+    self.blob_location *= self.distance_ratio
+    
+    
+    
 
 def rgb_normalize(image):
   # Use RGB normalization to handle the varying lighting
