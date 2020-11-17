@@ -45,11 +45,12 @@ class image_converter:
 
     # Publish blob data
     self.blob_centers = Int64MultiArray()
+    image = rgb_normalize(self.cv_image2)
     self.blob_centers.data = np.array([0 for _ in range(8)])
-    self.blob_centers.data[0:2] = detect_yellow_center(self.cv_image2)
-    self.blob_centers.data[2:4] = detect_blue_center(self.cv_image2)
-    self.blob_centers.data[4:6] = detect_green_center(self.cv_image2)
-    self.blob_centers.data[6:8] = detect_red_center(self.cv_image2)
+    self.blob_centers.data[0:2] = detect_yellow_center(image)
+    self.blob_centers.data[2:4] = detect_blue_center(image)
+    self.blob_centers.data[4:6] = detect_green_center(image)
+    self.blob_centers.data[6:8] = detect_red_center(image)
 
     self.blob_center_publisher.publish(self.blob_centers)
 

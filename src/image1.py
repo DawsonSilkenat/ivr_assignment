@@ -181,10 +181,6 @@ def detect_red_center(image):
   thresholded = cv2.inRange(image, red_lower, red_upper)
   thresholded = cv2.erode(thresholded, np.ones(3, np.uint8))
   thresholded = cv2.dilate(thresholded, np.ones(3, np.uint8))
-
-  cv2.imshow("thresholded", thresholded)
-  cv2.waitKey(1)
-
   # Finding the center point
   try:
     moments = cv2.moments(thresholded)
