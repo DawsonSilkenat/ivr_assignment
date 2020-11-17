@@ -31,7 +31,7 @@ class image_converter:
     self.start_time = rospy.get_time()
 
     # initialize subscribers to recieve blob centers from image2
-    self.yellow_blob_sub = rospy.Subscriber("/camera2/yellow_blob_data", Int64MultiArray, self.im2_update)
+    self.blob_subscriber = rospy.Subscriber("/camera2/blob_data", Int64MultiArray, self.im2_update)
 
 
   # Recieve data from camera 1, process it, and publish

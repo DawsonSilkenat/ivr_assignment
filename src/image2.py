@@ -26,12 +26,7 @@ class image_converter:
     self.bridge = CvBridge()
 
     # initialize publishers to send blob centers to image1
-    self.yellow_blob_pub = rospy.Publisher("/camera2/yellow_blob_data", Int64MultiArray, queue_size = 1)
-    #self.blue_blob_pub = rospy.Publisher("/camera2/blue_blob_data", list, queue_size = 1)
-    #self.green_blob_pub = rospy.Publisher("/camera2/green_blob_data", list, queue_size = 1)
-    #self.red_blob_pub = rospy.Publisher("/camera2/red_blob_data", list, queue_size = 1)
-    #self.target_blob_pub = rospy.Publisher("/camera2/target_blob_data", list, queue_size = 1)
-    #self.obstacle_blob_pub = rospy.Publisher("/camera2/obstacle_blob_data", list, queue_size = 1)
+    self.blob_center_publisher = rospy.Publisher("/camera2/blob_data", Int64MultiArray, queue_size = 1)
 
     
 
@@ -49,9 +44,15 @@ class image_converter:
     cv2.waitKey(1)
 
     # Publish blob data
-    self.yellow_blob = Int64MultiArray()
-    self.yellow_blob.data = detect_yellow_center(self.cv_image2)
-    self.yellow_blob_pub.publish(self.yellow_blob)
+    self.blob_centers = Int64MultiArray()
+    self.blob_centers.data = np.array([0 for _ in range(8)])
+    self.blob_centers.data[0:2] = detect_yellow_center(self.cv_image2)
+    self.blob_centers.data[2:4] = detect_blue_center(self.cv_image2)
+    self.blob_centers.data[4:6] = detect_green_center(self.cv_image2)
+    self.blob_centers.data[6:8] = detect_red_center(self.cv_image2)
+
+    self.blob_center_publisher.publish(self.blob_centers)
+
 
     # Publish the results
     try: 
