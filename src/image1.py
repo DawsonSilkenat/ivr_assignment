@@ -132,7 +132,6 @@ class image_converter:
   def forward_kinematics(self, angles):
     """
     Matrices used in deriving the forward kinematics
-    
     frame_1_0 = np.array([
       [np.cos(angles[0] + np.pi / 2), 0, np.sin(angles[0] + np.pi / 2), 0],
       [np.sin(angles[0] + np.pi / 2), 0, -np.cos(angles[0] + np.pi / 2), 0],
@@ -158,22 +157,82 @@ class image_converter:
       [0, 0, 0, 1]])
 
     fk_matrix = frame_1_0.dot(frame_2_1.dot(frame_3_2.dot(frame_4_3)))
+    r1 = fk_matrix[0:-1, -1]
     """
+    # return np.array([
+    #   np.sin(angles[0]) * np.sin(angles[1]) * 
+    #   (3.5 * np.cos(angles[2]) + 3 * np.cos(angles[2]) * np.cos(angles[3]))
+      
+    #   + np.cos(angles[0]) * (3.5 * np.sin(angles[2]) + 3 * np.sin(angles[2]) * np.cos(angles[3]))
+    #   + 3 * np.sin(angles[0]) * np.cos(angles[1]) * np.sin(angles[3]), 
 
-    # r1 = fk_matrix[0:-1, -1]
+    #   np.sin(angles[0]) * (3.5 * np.sin(angles[2]) + 3 * np.sin(angles[2]) * np.cos(angles[3]))
+    #   - np.cos(angles[0]) * np.sin(angles[1]) * (3.5 * np.cos(angles[2]) + 3 * np.cos(angles[2]) * np.cos(angles[3]))
+    #   - 3 * np.cos(angles[0]) * np.cos(angles[1]) * np.sin(angles[3]), 
+
+    #   np.cos(angles[1]) * (3 * np.cos(angles[2]) * np.cos(angles[3]) + 3.5 * np.cos(angles[2]))
+    #   - 3 * np.sin(angles[1]) * np.sin(angles[3]) + 2.5  
+    # ])
+
     return np.array([
-      np.sin(angles[0]) * np.sin(angles[1]) * (3.5 * np.cos(angles[2]) + 3 * np.cos(angles[2]) * np.cos(angles[3]))
-      + np.cos(angles[0]) * (3.5 * np.sin(angles[2]) + 3 * np.sin(angles[2]) * np.cos(angles[3]))
+      np.sin(angles[0]) * np.sin(angles[1]) * np.cos(angles[2]) * (3.5 + 3 * np.cos(angles[3]))
+      + np.cos(angles[0]) * np.sin(angles[2]) * (3.5  + 3 * np.cos(angles[3]))
       + 3 * np.sin(angles[0]) * np.cos(angles[1]) * np.sin(angles[3]), 
-      np.sin(angles[0]) * (3.5 * np.sin(angles[2]) + 3 * np.sin(angles[2]) * np.cos(angles[3]))
-      - np.cos(angles[0]) * np.sin(angles[1]) * (3.5 * np.cos(angles[2]) + 3 * np.cos(angles[2]) * np.cos(angles[3]))
+
+      np.sin(angles[0]) * np.sin(angles[2]) * (3.5 + 3 * np.cos(angles[3]))
+      - np.cos(angles[0]) * np.sin(angles[1]) * np.cos(angles[2]) * (3.5  + 3 * np.cos(angles[3]))
       - 3 * np.cos(angles[0]) * np.cos(angles[1]) * np.sin(angles[3]), 
-      np.cos(angles[1]) * (3 * np.cos(angles[2]) * np.cos(angles[3]) + 3.5 * np.cos(angles[2]))
+
+      np.cos(angles[1]) * np.cos(angles[2]) * (3.5 + 3 * np.cos(angles[3]))
       - 3 * np.sin(angles[1]) * np.sin(angles[3]) + 2.5  
     ])
 
     # print(r1 - r2 < 0.000001)
-    # return r1
+    # return r2
+  
+  def jacobian(self, angles):
+    # I really hope this is correct
+    return np.array(
+      [
+        [
+          np.cos(angles[0]) * np.sin(angles[1]) * np.cos(angles[2]) * (3.5 + 3 * np.cos(angles[3]))
+          - np.sin(angles[0]) * np.sin(angles[2]) * (3.5  + 3 * np.cos(angles[3]))
+          + 3 * np.cos(angles[0]) * np.cos(angles[1]) * np.sin(angles[3]), 
+
+          np.sin(angles[0]) * np.cos(angles[1]) * np.cos(angles[2]) * (3.5 + 3 * np.cos(angles[3]))
+          - 3 * np.sin(angles[0]) * np.sin(angles[1]) * np.sin(angles[3]), 
+
+          - np.sin(angles[0]) * np.sin(angles[1]) * np.sin(angles[2]) * (3.5 + 3 * np.cos(angles[3]))
+          + np.cos(angles[0]) * np.cos(angles[2]) * (3.5  + 3 * np.cos(angles[3])),
+
+          - np.sin(angles[0]) * np.sin(angles[1]) * np.cos(angles[2]) * 3 * np.sin(angles[3])
+          + np.cos(angles[0]) * np.sin(angles[2]) * 3 * np.sin(angles[3])
+          + 3 * np.sin(angles[0]) * np.cos(angles[1]) * np.cos(angles[3]), 
+        ],
+
+        [
+          np.cos(angles[0]) * np.sin(angles[2]) * (3.5 + 3 * np.cos(angles[3]))
+          + np.sin(angles[0]) * np.sin(angles[1]) * np.cos(angles[2]) * (3.5  + 3 * np.cos(angles[3]))
+          + 3 * np.sin(angles[0]) * np.cos(angles[1]) * np.sin(angles[3]),
+
+          - np.cos(angles[0]) * np.cos(angles[1]) * np.cos(angles[2]) * (3.5  + 3 * np.cos(angles[3]))
+          + 3 * np.cos(angles[0]) * np.sin(angles[1]) * np.sin(angles[3]), 
+
+          np.sin(angles[0]) * np.cos(angles[2]) * (3.5 + 3 * np.cos(angles[3]))
+          + np.cos(angles[0]) * np.sin(angles[1]) * np.sin(angles[2]) * (3.5  + 3 * np.cos(angles[3])),
+
+          - np.sin(angles[0]) * np.sin(angles[2]) * 3 * np.sin(angles[3])
+          + np.cos(angles[0]) * np.sin(angles[1]) * np.cos(angles[2]) * 3 * np.sin(angles[3])
+          - 3 * np.cos(angles[0]) * np.cos(angles[1]) * np.cos(angles[3]), 
+        ],
+
+        [0, 
+          - np.sin(angles[1]) * np.cos(angles[2]) * (3.5 + 3 * np.cos(angles[3])) - 3 * np.cos(angles[1]) * np.sin(angles[3]),
+          - np.cos(angles[1]) * np.sin(angles[2]) * (3.5 + 3 * np.cos(angles[3])),
+          - np.cos(angles[1]) * np.cos(angles[2]) * 3 * np.sin(angles[3]) - 3 * np.sin(angles[1]) * np.cos(angles[3])
+        ]
+      ]
+    )
 
     
 
