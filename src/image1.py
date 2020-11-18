@@ -45,8 +45,6 @@ class image_converter:
       self.cv_image1 = self.bridge.imgmsg_to_cv2(data, "bgr8")
     except CvBridgeError as e:
       print(e)
-    
-    print()
 
     # Uncomment if you want to save the image
     #cv2.imwrite('image_copy.png', cv_image)
@@ -78,7 +76,7 @@ class image_converter:
     self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 255
     self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 0
 
-    print(self.blob_location)
+    # print(self.blob_location)
 
     cv2.imshow('window1', self.cv_image1)
     # cv2.imshow('window2', image)
@@ -100,12 +98,17 @@ class image_converter:
     self.joint3.data = (np.pi / 2) * np.sin((np.pi / 18) * current_time)
     self.joint4.data = (np.pi / 2) * np.sin((np.pi / 20) * current_time)
 
-    #self.joint2_pub.publish(self.joint2)
-    #self.joint3_pub.publish(self.joint3)
-    #self.joint4_pub.publish(self.joint4)
+    self.joint2_pub.publish(self.joint2)
+    self.joint3_pub.publish(self.joint3)
+    self.joint4_pub.publish(self.joint4)
 
-  def im2_update(self,data):  
+    print(
+      self.blob_location[-1] - 
+      self.forward_kinematics([0, self.joint2.data, self.joint3.data, self.joint4.data]))
 
+
+
+  def im2_update(self,data):
     image1 = rgb_normalize(self.cv_image1)
     
     center_info_1 = [detect_yellow_center(image1), detect_blue_center(image1), detect_green_center(image1), detect_red_center(image1)]
@@ -126,6 +129,52 @@ class image_converter:
     self.blob_location *= self.distance_ratio
     
     
+  def forward_kinematics(self, angles):
+    """
+    Matrices used in deriving the forward kinematics
+    
+    frame_1_0 = np.array([
+      [np.cos(angles[0] + np.pi / 2), 0, np.sin(angles[0] + np.pi / 2), 0],
+      [np.sin(angles[0] + np.pi / 2), 0, -np.cos(angles[0] + np.pi / 2), 0],
+      [0, 1, 0, 2.5],
+      [0, 0, 0, 1]])
+
+    frame_2_1 = np.array([
+      [np.cos(angles[1] + np.pi / 2), 0, np.sin(angles[1] + np.pi / 2), 0],
+      [np.sin(angles[1] + np.pi / 2), 0, -np.cos(angles[1] + np.pi / 2), 0],
+      [0, 1, 0, 0],
+      [0, 0, 0, 1]])
+
+    frame_3_2 = np.array([
+      [np.cos(angles[2]), 0, -np.sin(angles[2]), 3.5 * np.cos(angles[2])],
+      [np.sin(angles[2]), 0, np.cos(angles[2]), 3.5 * np.sin(angles[2])],
+      [0, -1, 0, 0],
+      [0, 0, 0, 1]])
+
+    frame_4_3 = np.array([
+      [np.cos(angles[3]), -np.sin(angles[3]), 0, 3 * np.cos(angles[3])],
+      [np.sin(angles[3]), np.cos(angles[3]), 0, 3 * np.sin(angles[3])],
+      [0, 0, 1, 0],
+      [0, 0, 0, 1]])
+
+    fk_matrix = frame_1_0.dot(frame_2_1.dot(frame_3_2.dot(frame_4_3)))
+    """
+
+    # r1 = fk_matrix[0:-1, -1]
+    return np.array([
+      np.sin(angles[0]) * np.sin(angles[1]) * (3.5 * np.cos(angles[2]) + 3 * np.cos(angles[2]) * np.cos(angles[3]))
+      + np.cos(angles[0]) * (3.5 * np.sin(angles[2]) + 3 * np.sin(angles[2]) * np.cos(angles[3]))
+      + 3 * np.sin(angles[0]) * np.cos(angles[1]) * np.sin(angles[3]), 
+      np.sin(angles[0]) * (3.5 * np.sin(angles[2]) + 3 * np.sin(angles[2]) * np.cos(angles[3]))
+      - np.cos(angles[0]) * np.sin(angles[1]) * (3.5 * np.cos(angles[2]) + 3 * np.cos(angles[2]) * np.cos(angles[3]))
+      - 3 * np.cos(angles[0]) * np.cos(angles[1]) * np.sin(angles[3]), 
+      np.cos(angles[1]) * (3 * np.cos(angles[2]) * np.cos(angles[3]) + 3.5 * np.cos(angles[2]))
+      - 3 * np.sin(angles[1]) * np.sin(angles[3]) + 2.5  
+    ])
+
+    # print(r1 - r2 < 0.000001)
+    # return r1
+
     
 
 def rgb_normalize(image):
