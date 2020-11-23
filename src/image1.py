@@ -2,6 +2,7 @@
 
 import roslib
 import sys
+import os
 import rospy
 import cv2
 import numpy as np
@@ -312,7 +313,7 @@ def detect_red_center(image):
   red_upper = np.array([10,10,255])
   return detect_color_center(image, red_lower, red_upper)
 
-def detect_orange_center(image):
+def threshold_orange(image):
   # Color boundaries
   orange_lower = np.array([0,50,100])
   orange_upper = np.array([10,100,175])
@@ -320,19 +321,80 @@ def detect_orange_center(image):
   thresholded = cv2.inRange(image, orange_lower, orange_upper)
   thresholded = cv2.erode(thresholded, np.ones(3, np.uint8))
   thresholded = cv2.dilate(thresholded, np.ones(3, np.uint8))
-  
+
+  # cv2.imshow("all", thresholded)
+  # cv2.waitKey(1)
+
+  return thresholded
+
+def detect_orange_center(image):
+  thresholded = threshold_orange(image)
+
   ones = np.argwhere(thresholded)
   y_max = np.max(ones[:,0]) + 10
   y_min = np.min(ones[:,0]) - 10
   x_max = np.max(ones[:,1]) + 10
   x_min = np.min(ones[:,1]) - 10
 
-  # cv2.imshow("all", thresholded)
+  # Crop the thresholded image to the region containing both orange objects
+  thresholded_cropped = thresholded[y_min : y_max, x_min : x_max]
 
-  thresholded = thresholded[y_min : y_max, x_min : x_max]
+  # Run from the catkin_ws directory
+  template_path = os.path.realpath("src/ivr_assignment/src/target.png")
+  template = cv2.imread(template_path, 0)
 
-  # cv2.imshow("target", thresholded)
-  # cv2.waitKey(1)
+  # Resize the template to capture a larger area
+  resize_dims = (int(np.round(1.3 * (template.shape[0]))), int(np.round(1.3 * (template.shape[1]))))
+  template = cv2.resize(template, resize_dims)
+
+  # Distance Transform Matrix
+  dists = cv2.distanceTransform(cv2.bitwise_not(thresholded_cropped), cv2.DIST_L2, 0)
+  
+  step_size = 3
+  y_range = round((thresholded_cropped.shape[0] - template.shape[0]) / step_size)
+  x_range = round((thresholded_cropped.shape[1] - template.shape[1]) / step_size)
+
+  chamfer_scores = np.zeros((y_range,x_range))
+  # Iterate over y positions
+  for i in range(y_range):
+    # Iterate over x positions
+    for j in range(x_range):
+      # Multiply the relevent area of the distance transformed image with the template
+      # translated to the current iteration's region
+      chamfer_scores[i,j] = np.sum(dists[i*step_size:template.shape[0] + i*step_size, j*step_size :template.shape[1] + j*step_size] * template)
+  # The translation region which yields the lowest chamfer score is the region containing the target
+  best_translation = np.argmin(chamfer_scores)
+  print("Best Chamfer Score: ", np.min(chamfer_scores))
+
+  # Values corresponding to the region of the target in the cropped and thresholded image
+  y_relative_min = (best_translation % y_range) * step_size
+  y_relative_max = (best_translation % y_range) * step_size + template.shape[0]
+  x_relative_min = (best_translation % x_range) * step_size
+  x_relative_max = (best_translation % x_range) * step_size + template.shape[1]
+  target = thresholded_cropped[y_relative_min:y_relative_max, x_relative_min:x_relative_max]
+
+  # Values corresponding to the region of the target in the full-sized (non-cropped) thresholded image
+  y_final_min = y_relative_min + y_min
+  y_final_max = y_relative_max + y_min
+  x_final_min = x_relative_min + x_min
+  x_final_max = x_relative_max + x_min
+
+  target_region = np.zeros(thresholded.shape, dtype = np.uint8)
+  target_region[y_final_min:y_final_max, x_final_min:x_final_max] = 255
+  thresholded = cv2.bitwise_and(thresholded, target_region)
+
+  # Region for testing
+  region1 = np.zeros(thresholded.shape)
+  region1[y_min:y_max, x_min:x_max] = 255
+  region1[y_final_min:y_final_max, x_final_min:x_final_max] = 0
+
+  # Testing purposes
+  cv2.imshow("distance_transform", dists)
+  cv2.imshow("template", template)
+  cv2.imshow("target", target)
+  cv2.imshow("thresholded", thresholded)
+  cv2.imshow("test_region", region1)
+  cv2.waitKey(1)
 
   # Finding the center point
   try:
