@@ -33,6 +33,7 @@ class image_converter:
     # initialize subscribers to recieve blob centers from image2
     self.blob_subscriber = rospy.Subscriber("/camera2/blob_data", Int64MultiArray, self.im2_update)
     self.blob_location = np.zeros((4,3))
+    self.joint_angles = np.zeros(4)
 
     # meter value of a single unit
     self.distance_ratio = None
@@ -49,6 +50,8 @@ class image_converter:
     # Uncomment if you want to save the image
     #cv2.imwrite('image_copy.png', cv_image)
 
+
+    # Visualisation of centers
     image = rgb_normalize(self.cv_image1)
 
     c = detect_orange_center(image)
@@ -76,7 +79,6 @@ class image_converter:
     self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 255
     self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 0
 
-    # print(self.blob_location)
 
     cv2.imshow('window1', self.cv_image1)
     # cv2.imshow('window2', image)
@@ -98,14 +100,16 @@ class image_converter:
     self.joint3.data = (np.pi / 2) * np.sin((np.pi / 18) * current_time)
     self.joint4.data = (np.pi / 2) * np.sin((np.pi / 20) * current_time)
 
-    self.joint2_pub.publish(self.joint2)
-    self.joint3_pub.publish(self.joint3)
-    self.joint4_pub.publish(self.joint4)
+    # self.joint2_pub.publish(self.joint2)
+    # self.joint3_pub.publish(self.joint3)
+    # self.joint4_pub.publish(self.joint4)
 
-    print(
-      self.blob_location[-1] - 
-      self.forward_kinematics([0, self.joint2.data, self.joint3.data, self.joint4.data]))
-
+    # print(self.blob_location[0], self.blob_location[1])
+    # print(self.blob_location[2] - np.array(
+      # [3.5 * np.sin(self.joint2.data), 
+      # -3.5 * np.sin(self.joint2.data) * np.cos(self.joint3.data),
+      # 3.5 * np.cos(self.joint2.data) * np.cos(self.joint3.data)]))
+    
 
 
   def im2_update(self,data):
@@ -120,15 +124,46 @@ class image_converter:
         self.blob_location[i,1] = center_info_1[i][0] - center_info_1[0][0]
         self.blob_location[i,2] = -(center_info_2[i,1] - center_info_2[0,1] + center_info_1[i][1] - center_info_1[0][1])/ 2
 
-    if self.distance_ratio is None:
+    # if self.distance_ratio is None:
       # meter value for a single unit
-      self.distance_ratio = (2.5 / np.linalg.norm(self.blob_location[1,:] - self.blob_location[0,:]) + 
+    self.distance_ratio = (2.5 / np.linalg.norm(self.blob_location[1,:] - self.blob_location[0,:]) + 
                             3.5 / np.linalg.norm(self.blob_location[2,:] - self.blob_location[1,:]) +
                             3 / np.linalg.norm(self.blob_location[3,:] - self.blob_location[2,:])) / 3
 
     self.blob_location *= self.distance_ratio
+    self.angle_estimation()
+    print("%0.3f  %0.3f  %0.3f  %0.3f" % tuple(self.joint_angles)) # only looking at the first three decimal places so any noice seen is significant
     
-    
+  def angle_estimation(self):
+    # Can't easily find joint_angles[0] from blob detection, so assume it is known
+
+    # Find second and third joint angles by analysing forward kinematics equation 
+    # for the location of the third blob, which is actually the forth joint
+    self.joint_angles[1] = np.arctan2(self.blob_location[2,0] * np.sin(self.joint_angles[0]) 
+                            - self.blob_location[2,1] * np.cos(self.joint_angles[0]), 
+                            self.blob_location[2,2] - 2.5) 
+
+    self.joint_angles[2] = np.arctan2((self.blob_location[2,0] * np.cos(self.joint_angles[0]) 
+                            + self.blob_location[2,1] * np.sin(self.joint_angles[0])) * np.cos(self.joint_angles[1]), 
+                            self.blob_location[2,2] - 2.5) 
+
+    # Find the forth joint angle by finding the angle it makes with its unrotated position,
+    # then determine the correct sign by checking which has the smaller error
+    v1 = self.blob_location[3] - self.blob_location[2]
+    v2 = self.blob_location[2] - self.blob_location[1]
+    angle = np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+
+    positive = [self.joint_angles[i] for i in range(3)] + [angle]
+    negative = [self.joint_angles[i] for i in range(3)] + [-angle]
+
+    if np.linalg.norm(self.blob_location[3] - self.forward_kinematics(positive)) < \
+        np.linalg.norm(self.blob_location[3] - self.forward_kinematics(negative)): 
+      self.joint_angles[3] = angle
+    else:
+      self.joint_angles[3] = -angle
+      
+
+
   def forward_kinematics(self, angles):
     """
     Matrices used in deriving the forward kinematics
@@ -159,20 +194,6 @@ class image_converter:
     fk_matrix = frame_1_0.dot(frame_2_1.dot(frame_3_2.dot(frame_4_3)))
     r1 = fk_matrix[0:-1, -1]
     """
-    # return np.array([
-    #   np.sin(angles[0]) * np.sin(angles[1]) * 
-    #   (3.5 * np.cos(angles[2]) + 3 * np.cos(angles[2]) * np.cos(angles[3]))
-      
-    #   + np.cos(angles[0]) * (3.5 * np.sin(angles[2]) + 3 * np.sin(angles[2]) * np.cos(angles[3]))
-    #   + 3 * np.sin(angles[0]) * np.cos(angles[1]) * np.sin(angles[3]), 
-
-    #   np.sin(angles[0]) * (3.5 * np.sin(angles[2]) + 3 * np.sin(angles[2]) * np.cos(angles[3]))
-    #   - np.cos(angles[0]) * np.sin(angles[1]) * (3.5 * np.cos(angles[2]) + 3 * np.cos(angles[2]) * np.cos(angles[3]))
-    #   - 3 * np.cos(angles[0]) * np.cos(angles[1]) * np.sin(angles[3]), 
-
-    #   np.cos(angles[1]) * (3 * np.cos(angles[2]) * np.cos(angles[3]) + 3.5 * np.cos(angles[2]))
-    #   - 3 * np.sin(angles[1]) * np.sin(angles[3]) + 2.5  
-    # ])
 
     return np.array([
       np.sin(angles[0]) * np.sin(angles[1]) * np.cos(angles[2]) * (3.5 + 3 * np.cos(angles[3]))
@@ -186,9 +207,6 @@ class image_converter:
       np.cos(angles[1]) * np.cos(angles[2]) * (3.5 + 3 * np.cos(angles[3]))
       - 3 * np.sin(angles[1]) * np.sin(angles[3]) + 2.5  
     ])
-
-    # print(r1 - r2 < 0.000001)
-    # return r2
   
   def jacobian(self, angles):
     # I really hope this is correct
@@ -255,12 +273,9 @@ def rgb_normalize(image):
   return rgb_norm_image
 
 
-def detect_yellow_center(image):
-  # Color boundaries
-  yellow_lower = np.array([0,100,100])
-  yellow_upper = np.array([10,150,150])
+def detect_color_center(image, lower_bound, upper_bound):
   # Thresholding and removing noise
-  thresholded = cv2.inRange(image, yellow_lower, yellow_upper)
+  thresholded = cv2.inRange(image, lower_bound, upper_bound)
   thresholded = cv2.erode(thresholded, np.ones(3, np.uint8))
   thresholded = cv2.dilate(thresholded, np.ones(3, np.uint8))
   # Finding the center point
@@ -271,57 +286,31 @@ def detect_yellow_center(image):
     return np.array([cx,cy])
   except:
     return np.array([-1,-1])
+
+
+def detect_yellow_center(image):
+  # Color boundaries
+  yellow_lower = np.array([0,100,100])
+  yellow_upper = np.array([10,150,150])
+  return detect_color_center(image, yellow_lower, yellow_upper)
 
 def detect_blue_center(image):
   # Color boundaries
   blue_lower = np.array([200,0,0])
   blue_upper = np.array([255,10,10])
-  # Thresholding and removing noise
-  thresholded = cv2.inRange(image, blue_lower, blue_upper)
-  thresholded = cv2.erode(thresholded, np.ones(3, np.uint8))
-  thresholded = cv2.dilate(thresholded, np.ones(3, np.uint8))
-  # Finding the center point
-  try:
-    moments = cv2.moments(thresholded)
-    cx = int(moments['m10']/moments['m00'])
-    cy = int(moments['m01']/moments['m00'])
-    return np.array([cx,cy])
-  except:
-    return np.array([-1,-1])
+  return detect_color_center(image, blue_lower, blue_upper)
     
 def detect_green_center(image):
   # Color boundaries
   green_lower = np.array([0,200,0])
   green_upper = np.array([10,255,10])
-  # Thresholding and removing noise
-  thresholded = cv2.inRange(image, green_lower, green_upper)
-  thresholded = cv2.erode(thresholded, np.ones(3, np.uint8))
-  thresholded = cv2.dilate(thresholded, np.ones(3, np.uint8))
-  # Finding the center point
-  try:
-    moments = cv2.moments(thresholded)
-    cx = int(moments['m10']/moments['m00'])
-    cy = int(moments['m01']/moments['m00'])
-    return np.array([cx,cy])
-  except:
-    return np.array([-1,-1])
+  return detect_color_center(image, green_lower, green_upper)
 
 def detect_red_center(image):
   # Color boundaries
   red_lower = np.array([0,0,180])
   red_upper = np.array([10,10,255])
-  # Thresholding and removing noise
-  thresholded = cv2.inRange(image, red_lower, red_upper)
-  thresholded = cv2.erode(thresholded, np.ones(3, np.uint8))
-  thresholded = cv2.dilate(thresholded, np.ones(3, np.uint8))
-  # Finding the center point
-  try:
-    moments = cv2.moments(thresholded)
-    cx = int(moments['m10']/moments['m00'])
-    cy = int(moments['m01']/moments['m00'])
-    return np.array([cx,cy])
-  except:
-    return np.array([-1,-1])
+  return detect_color_center(image, red_lower, red_upper)
 
 def detect_orange_center(image):
   # Color boundaries
