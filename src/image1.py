@@ -123,8 +123,6 @@ class image_converter:
     # Assumptions are as follows:
     # Yellow blob will never be completely obfuscated
     # The same blob will not be completely obfuscated in both cameras
-    # z value is the same in both cameras
-    # distance from one joint center to another is the link length (this is likely to be the reason it doesnt work)
     # Iterate over all blobs:
     if self.distance_ratio is not None:
       link_lengths = np.array([2.5,3.5,3]) # link_lengths contains the links with a non-zero length
@@ -138,19 +136,27 @@ class image_converter:
         if center_info_1[i,0] == -1:
           # Sets the missing axis' value as a function of the link length, previous joint position, 
           # and known coordinates of the current joint position.
-          center_info_1[i,0] = np.sqrt(np.abs((link_lengths[i-1] ** 2 - (center_info_2[i, 0] - center_info_2[i-1, 0]) ** 2  
-                                - (center_info_2[i, 1] - center_info_2[i-1, 1]) ** 2))) + center_info_1[i-1, 0]
+          delta_z = np.abs((center_info_2[i,1] + center_info_1[i-1,1])/2 -  (center_info_2[i-1,1] + center_info_1[i-1,1])/2)
+          delta_x = np.abs(center_info_2[i,0] - center_info_2[i-1,0])
+          center_info_1[i,0] = np.abs(link_lengths[i-1] - delta_z - delta_x) + center_info_1[i-1,0]
           center_info_1[i,1] = center_info_2[i,1]
           # for testing
           # print("Blob ",i ,"obfuscated found y = ", center_info_1[i,0]) 
+          # print("delta z = ", delta_z)
+          # print("delta x = ", delta_x)
+          # print("yB = ?  yA = ",center_info_1[i-1,0] ) 
 
         # If x position is unknown
         if center_info_2[i,0] == -1:
-          center_info_2[i,0] = np.sqrt(np.abs(link_lengths[i-1] ** 2 - (center_info_1[i, 0] - center_info_2[i-1, 0]) ** 2
-                                - (center_info_1[i, 1] - center_info_2[i-1, 1]) ** 2)) + center_info_2[i-1, 0]
-          center_info_2[i,1] = center_info[i,1]
+          delta_z = np.abs((center_info_1[i,1] + center_info_2[i-1,1])/2 -  (center_info_1[i-1,1] + center_info_2[i-1,1])/2)
+          delta_y = np.abs(center_info_1[i,0] - center_info_1[i-1,0])
+          center_info_2[i,0] = np.abs(link_lengths[i-1] - delta_z - delta_y) + center_info_2[i-1,0]
+          center_info_2[i,1] = center_info_1[i,1]
           # for testing
           # print("Blob ",i ,"obfuscated found x = ", center_info_2[i,0])
+          # print("delta z = ", delta_z)
+          # print("delta y = ", delta_y)
+          # print("xB = ?  xA = ",center_info_2[i-1,0], "zA = ", center_info_1[i,1] )
 
     for i in range(1,len(center_info_1)):
       if(center_info_1[i,0] != -1 and center_info_2[i,0] != -1):
@@ -165,9 +171,9 @@ class image_converter:
     self.cv_image1[center_info_1[0,1]-1:center_info_1[0,1]+1, center_info_1[0,0]-1:center_info_1[0,0]+1, 2] = 255
 
     # blue blob:
-    #self.cv_image1[center_info_1[1,1]-1:center_info_1[1,1]+1, center_info_1[1,0]-1:center_info_1[1,0]+1, 0] = 0
-    #self.cv_image1[center_info_1[1,1]-1:center_info_1[1,1]+1, center_info_1[1,0]-1:center_info_1[1,0]+1, 1] = 0
-    #self.cv_image1[center_info_1[1,1]-1:center_info_1[1,1]+1, center_info_1[1,0]-1:center_info_1[1,0]+1, 2] = 255
+    self.cv_image1[center_info_1[1,1]-1:center_info_1[1,1]+1, center_info_1[1,0]-1:center_info_1[1,0]+1, 0] = 0
+    self.cv_image1[center_info_1[1,1]-1:center_info_1[1,1]+1, center_info_1[1,0]-1:center_info_1[1,0]+1, 1] = 0
+    self.cv_image1[center_info_1[1,1]-1:center_info_1[1,1]+1, center_info_1[1,0]-1:center_info_1[1,0]+1, 2] = 255
 
     # green blob:
     self.cv_image1[center_info_1[2,1]-1:center_info_1[2,1]+1, center_info_1[2,0]-1:center_info_1[2,0]+1, 0] = 0
