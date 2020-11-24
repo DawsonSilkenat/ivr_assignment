@@ -125,24 +125,27 @@ class image_converter:
     center_info_1 = np.array([detect_yellow_center(image1), detect_blue_center(image1), detect_green_center(image1), detect_red_center(image1)])
     center_info_2 = np.reshape(np.array(data.data), (-1,2))[:-1,:]
     
+    if self.distance_ratio is not None:
     # Assume target is never obfuscated
-    target_info_2 = data.data[-2:] # [x,z] coordinate offrom camera 2
-    target_info_1 = detect_target_center(image1) # [y,z] coordinate from camera 2
-    self.target_location[0] = target_info_2[0] # x coordinate
-    self.target_location[1] = target_info_1[0] # y coordinate
-    self.target_location[2] = (target_info_2[1] + target_info_1[1])/2 # z coordinate
+      target_info_2 = data.data[-2:] # [x,z] coordinate offrom camera 2
+      target_info_1 = detect_target_center(image1) # [y,z] coordinate from camera 2
+      self.target_location[0] = target_info_2[0] - center_info_2[0,0] # x coordinate relative to robot base frame
+      self.target_location[1] = target_info_1[0] - center_info_1[0,0] # y coordinate relative to robot base frame
+      self.target_location[2] = -(target_info_2[1] - center_info_2[0,1] + target_info_1[1] - center_info_1[0,1])/2 # z coordinate relative to robot base frame
 
-    self.target_x = Float64()
-    self.target_x.data = self.target_location[0]
-    self.target_x_publisher.publish(self.target_x)
+      self.target_location *= self.distance_ratio
 
-    self.target_y = Float64()
-    self.target_y.data = self.target_location[1]
-    self.target_y_publisher.publish(self.target_y)
+      self.target_x = Float64()
+      self.target_x.data = self.target_location[0]
+      self.target_x_publisher.publish(self.target_x)
 
-    self.target_z = Float64()
-    self.target_z.data = self.target_location[2]
-    self.target_z_publisher.publish(self.target_z)
+      self.target_y = Float64()
+      self.target_y.data = self.target_location[1]
+      self.target_y_publisher.publish(self.target_y)
+
+      self.target_z = Float64()
+      self.target_z.data = self.target_location[2]
+      self.target_z_publisher.publish(self.target_z)
 
     # Find Joint Positions when blobs are obfuscated
     # Assumptions are as follows:
@@ -512,7 +515,10 @@ def detect_target_center(image):
     return np.array([cx,cy])
   except:
     print("Best Chamfer Score: ", np.min(chamfer_scores))
-    return np.array([-1,-1])
+    moments = cv2.moments(threshold_orange(image)) 
+    cx = int(moments['m10']/moments['m00'])
+    cy = int(moments['m01']/moments['m00'])
+    return np.array([cx,cy])
 
 
 # call the class
