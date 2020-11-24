@@ -56,29 +56,29 @@ class image_converter:
     image = rgb_normalize(self.cv_image1)
 
     c = detect_orange_center(image)
-    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
-    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
-    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
+    #self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
+    #self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
+    #self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
 
     c = detect_yellow_center(image)
-    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
-    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
-    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
+    #self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
+    #self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
+    #self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
 
     c = detect_blue_center(image)
-    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
-    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
-    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
+    #self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
+    #self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
+    #self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
 
     c = detect_green_center(image)
-    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
-    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
-    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
+    #self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
+    #self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
+    #self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
 
     c = detect_red_center(image)
-    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
-    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 255
-    self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 0
+    #self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
+    #self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 255
+    #self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 0
 
 
     cv2.imshow('window1', self.cv_image1)
@@ -116,14 +116,70 @@ class image_converter:
   def im2_update(self,data):
     image1 = rgb_normalize(self.cv_image1)
     
-    center_info_1 = [detect_yellow_center(image1), detect_blue_center(image1), detect_green_center(image1), detect_red_center(image1)]
+    center_info_1 = np.array([detect_yellow_center(image1), detect_blue_center(image1), detect_green_center(image1), detect_red_center(image1)])
     center_info_2 = np.reshape(np.array(data.data), (-1,2))
 
+    # Find Joint Positions when blobs are obfuscated
+    # Assumptions are as follows:
+    # Yellow blob will never be completely obfuscated
+    # The same blob will not be completely obfuscated in both cameras
+    # z value is the same in both cameras
+    # distance from one joint center to another is the link length (this is likely to be the reason it doesnt work)
+    # Iterate over all blobs:
+    if self.distance_ratio is not None:
+      link_lengths = np.array([2.5,3.5,3]) # link_lengths contains the links with a non-zero length
+      link_lengths *= 1/self.distance_ratio # convert to pixel units
+
+      for i in range(1,len(center_info_1)):
+        if center_info_1[i,0] == -1 and center_info_2[i,0] == -1:
+          sys.exit() # this case when both x and y are unkown should never be true
+
+        # If y position is unknown
+        if center_info_1[i,0] == -1:
+          # Sets the missing axis' value as a function of the link length, previous joint position, 
+          # and known coordinates of the current joint position.
+          center_info_1[i,0] = np.sqrt(np.abs((link_lengths[i-1] ** 2 - (center_info_2[i, 0] - center_info_2[i-1, 0]) ** 2  
+                                - (center_info_2[i, 1] - center_info_2[i-1, 1]) ** 2))) + center_info_1[i-1, 0]
+          center_info_1[i,1] = center_info_2[i,1]
+          # for testing
+          # print("Blob ",i ,"obfuscated found y = ", center_info_1[i,0]) 
+
+        # If x position is unknown
+        if center_info_2[i,0] == -1:
+          center_info_2[i,0] = np.sqrt(np.abs(link_lengths[i-1] ** 2 - (center_info_1[i, 0] - center_info_2[i-1, 0]) ** 2
+                                - (center_info_1[i, 1] - center_info_2[i-1, 1]) ** 2)) + center_info_2[i-1, 0]
+          center_info_2[i,1] = center_info[i,1]
+          # for testing
+          # print("Blob ",i ,"obfuscated found x = ", center_info_2[i,0])
+
     for i in range(1,len(center_info_1)):
-      if(center_info_1[i][0] != -1 and center_info_2[i][0] != -1):
+      if(center_info_1[i,0] != -1 and center_info_2[i,0] != -1):
         self.blob_location[i,0] = center_info_2[i,0] - center_info_2[0,0]
-        self.blob_location[i,1] = center_info_1[i][0] - center_info_1[0][0]
-        self.blob_location[i,2] = -(center_info_2[i,1] - center_info_2[0,1] + center_info_1[i][1] - center_info_1[0][1])/ 2
+        self.blob_location[i,1] = center_info_1[i,0] - center_info_1[0,0]
+        self.blob_location[i,2] = -(center_info_2[i,1] - center_info_2[0,1] + center_info_1[i,1] - center_info_1[0,1])/ 2
+
+    # For testing: red dots placed on non-red blob centers and green dot placed on red blob center
+    # yellow blob:
+    self.cv_image1[center_info_1[0,1]-1:center_info_1[0,1]+1, center_info_1[0,0]-1:center_info_1[0,0]+1, 0] = 0
+    self.cv_image1[center_info_1[0,1]-1:center_info_1[0,1]+1, center_info_1[0,0]-1:center_info_1[0,0]+1, 1] = 0
+    self.cv_image1[center_info_1[0,1]-1:center_info_1[0,1]+1, center_info_1[0,0]-1:center_info_1[0,0]+1, 2] = 255
+
+    # blue blob:
+    #self.cv_image1[center_info_1[1,1]-1:center_info_1[1,1]+1, center_info_1[1,0]-1:center_info_1[1,0]+1, 0] = 0
+    #self.cv_image1[center_info_1[1,1]-1:center_info_1[1,1]+1, center_info_1[1,0]-1:center_info_1[1,0]+1, 1] = 0
+    #self.cv_image1[center_info_1[1,1]-1:center_info_1[1,1]+1, center_info_1[1,0]-1:center_info_1[1,0]+1, 2] = 255
+
+    # green blob:
+    self.cv_image1[center_info_1[2,1]-1:center_info_1[2,1]+1, center_info_1[2,0]-1:center_info_1[2,0]+1, 0] = 0
+    self.cv_image1[center_info_1[2,1]-1:center_info_1[2,1]+1, center_info_1[2,0]-1:center_info_1[2,0]+1, 1] = 0
+    self.cv_image1[center_info_1[2,1]-1:center_info_1[2,1]+1, center_info_1[2,0]-1:center_info_1[2,0]+1, 2] = 255
+
+    # red blob:
+    self.cv_image1[center_info_1[3,1]-1:center_info_1[3,1]+1, center_info_1[3,0]-1:center_info_1[3,0]+1, 0] = 0
+    self.cv_image1[center_info_1[3,1]-1:center_info_1[3,1]+1, center_info_1[3,0]-1:center_info_1[3,0]+1, 1] = 255
+    self.cv_image1[center_info_1[3,1]-1:center_info_1[3,1]+1, center_info_1[3,0]-1:center_info_1[3,0]+1, 2] = 0
+
+    cv2.imshow('Obfuscation', self.cv_image1)
 
     # if self.distance_ratio is None:
       # meter value for a single unit
@@ -389,12 +445,12 @@ def detect_orange_center(image):
   region1[y_final_min:y_final_max, x_final_min:x_final_max] = 0
 
   # Testing purposes
-  cv2.imshow("distance_transform", dists)
-  cv2.imshow("template", template)
-  cv2.imshow("target", target)
-  cv2.imshow("thresholded", thresholded)
-  cv2.imshow("test_region", region1)
-  cv2.waitKey(1)
+  #cv2.imshow("distance_transform", dists)
+  #cv2.imshow("template", template)
+  #cv2.imshow("target", target)
+  #cv2.imshow("thresholded", thresholded)
+  #cv2.imshow("test_region", region1)
+  #cv2.waitKey(1)
 
   # Finding the center point
   try:
