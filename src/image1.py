@@ -185,7 +185,7 @@ class image_converter:
     self.cv_image1[center_info_1[3,1]-1:center_info_1[3,1]+1, center_info_1[3,0]-1:center_info_1[3,0]+1, 1] = 255
     self.cv_image1[center_info_1[3,1]-1:center_info_1[3,1]+1, center_info_1[3,0]-1:center_info_1[3,0]+1, 2] = 0
 
-    cv2.imshow('Obfuscation', self.cv_image1)
+    # cv2.imshow('Obfuscation', self.cv_image1)
 
     # if self.distance_ratio is None:
       # meter value for a single unit
@@ -195,7 +195,7 @@ class image_converter:
 
     self.blob_location *= self.distance_ratio
     self.angle_estimation()
-    print("%0.3f  %0.3f  %0.3f  %0.3f" % tuple(self.joint_angles)) # only looking at the first three decimal places so any noice seen is significant
+    # print("%0.3f  %0.3f  %0.3f  %0.3f" % tuple(self.joint_angles)) # only looking at the first three decimal places so any noice seen is significant
     
   def angle_estimation(self):
     # Can't easily find joint_angles[0] from blob detection, so assume it is known
@@ -392,11 +392,13 @@ def threshold_orange(image):
 def detect_orange_center(image):
   thresholded = threshold_orange(image)
 
-  ones = np.argwhere(thresholded)
-  y_max = np.max(ones[:,0]) + 10
-  y_min = np.min(ones[:,0]) - 10
-  x_max = np.max(ones[:,1]) + 10
-  x_min = np.min(ones[:,1]) - 10
+  thresholded_copy = thresholded
+
+  where_orange = np.argwhere(thresholded)
+  y_max = np.max(where_orange[:,0]) + 20
+  y_min = np.min(where_orange[:,0]) - 20
+  x_max = np.max(where_orange[:,1]) + 20
+  x_min = np.min(where_orange[:,1]) - 20
 
   # Crop the thresholded image to the region containing both orange objects
   thresholded_cropped = thresholded[y_min : y_max, x_min : x_max]
@@ -407,7 +409,7 @@ def detect_orange_center(image):
 
   # Resize the template to capture a larger area
   resize_dims = (int(np.round(1.3 * (template.shape[0]))), int(np.round(1.3 * (template.shape[1]))))
-  template = cv2.resize(template, resize_dims)
+  # template = cv2.resize(template, resize_dims)
 
   # Distance Transform Matrix
   dists = cv2.distanceTransform(cv2.bitwise_not(thresholded_cropped), cv2.DIST_L2, 0)
@@ -426,20 +428,24 @@ def detect_orange_center(image):
       chamfer_scores[i,j] = np.sum(dists[i*step_size:template.shape[0] + i*step_size, j*step_size :template.shape[1] + j*step_size] * template)
   # The translation region which yields the lowest chamfer score is the region containing the target
   best_translation = np.argmin(chamfer_scores)
-  print("Best Chamfer Score: ", np.min(chamfer_scores))
+  # print("Best Chamfer Score: ", np.min(chamfer_scores))
+
+
+  # print(best_translation)
 
   # Values corresponding to the region of the target in the cropped and thresholded image
   y_relative_min = (best_translation % y_range) * step_size
   y_relative_max = (best_translation % y_range) * step_size + template.shape[0]
   x_relative_min = (best_translation % x_range) * step_size
   x_relative_max = (best_translation % x_range) * step_size + template.shape[1]
+
   target = thresholded_cropped[y_relative_min:y_relative_max, x_relative_min:x_relative_max]
 
   # Values corresponding to the region of the target in the full-sized (non-cropped) thresholded image
-  y_final_min = y_relative_min + y_min
-  y_final_max = y_relative_max + y_min
-  x_final_min = x_relative_min + x_min
-  x_final_max = x_relative_max + x_min
+  y_final_min = y_relative_min + y_min - 5
+  y_final_max = y_relative_max + y_min + 5
+  x_final_min = x_relative_min + x_min - 5
+  x_final_max = x_relative_max + x_min + 5
 
   target_region = np.zeros(thresholded.shape, dtype = np.uint8)
   target_region[y_final_min:y_final_max, x_final_min:x_final_max] = 255
@@ -450,13 +456,28 @@ def detect_orange_center(image):
   region1[y_min:y_max, x_min:x_max] = 255
   region1[y_final_min:y_final_max, x_final_min:x_final_max] = 0
 
+
+  thresholded_copy[y_final_min: y_final_max, x_final_min - 1: x_final_min + 1] = 200
+  thresholded_copy[y_final_min: y_final_max, x_final_max - 1: x_final_max + 1] = 200
+  thresholded_copy[y_final_min - 1: y_final_min + 1, x_final_min: x_final_max] = 200
+  thresholded_copy[y_final_max - 1: y_final_max + 1, x_final_min: x_final_max] = 200
+
+  thresholded_copy[y_min: y_max, x_min - 1: x_min + 1] = 200
+  thresholded_copy[y_min: y_max, x_max - 1: x_max + 1] = 200
+  thresholded_copy[y_min - 1: y_min + 1, x_min: x_max] = 200
+  thresholded_copy[y_max - 1: y_max + 1, x_min: x_max] = 200
+
+
+
   # Testing purposes
-  #cv2.imshow("distance_transform", dists)
-  #cv2.imshow("template", template)
-  #cv2.imshow("target", target)
-  #cv2.imshow("thresholded", thresholded)
-  #cv2.imshow("test_region", region1)
-  #cv2.waitKey(1)
+  cv2.imshow("distance_transform", dists)
+  cv2.imshow("template", template)
+  # cv2.imshow("target", target)
+  # cv2.imshow("thresholded cropped", thresholded_cropped)
+  # cv2.imshow("thresholded", thresholded)
+  cv2.imshow("thresholded copy", thresholded_copy)
+  # cv2.imshow("test_region", region1)
+  cv2.waitKey(1)
 
   # Finding the center point
   try:
@@ -465,6 +486,7 @@ def detect_orange_center(image):
     cy = int(moments['m01']/moments['m00'])
     return np.array([cx,cy])
   except:
+    print("Best Chamfer Score: ", np.min(chamfer_scores))
     return np.array([-1,-1])
 
 

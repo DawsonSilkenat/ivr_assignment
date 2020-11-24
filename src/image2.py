@@ -53,6 +53,7 @@ class image_converter:
     self.blob_center_publisher.publish(self.blob_centers)
 
     c = detect_orange_center(image)
+    # print(c)
     self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
     self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
     self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
