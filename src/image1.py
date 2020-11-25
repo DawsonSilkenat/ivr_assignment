@@ -124,28 +124,6 @@ class image_converter:
     
     center_info_1 = np.array([detect_yellow_center(image1), detect_blue_center(image1), detect_green_center(image1), detect_red_center(image1)])
     center_info_2 = np.reshape(np.array(data.data), (-1,2))[:-1,:]
-    
-    if self.distance_ratio is not None:
-    # Assume target is never obfuscated
-      target_info_2 = data.data[-2:] # [x,z] coordinate offrom camera 2
-      target_info_1 = detect_target_center(image1) # [y,z] coordinate from camera 2
-      self.target_location[0] = target_info_2[0] - center_info_2[0,0] # x coordinate relative to robot base frame
-      self.target_location[1] = target_info_1[0] - center_info_1[0,0] # y coordinate relative to robot base frame
-      self.target_location[2] = -(target_info_2[1] - center_info_2[0,1] + target_info_1[1] - center_info_1[0,1])/2 # z coordinate relative to robot base frame
-
-      self.target_location *= self.distance_ratio
-
-      self.target_x = Float64()
-      self.target_x.data = self.target_location[0]
-      self.target_x_publisher.publish(self.target_x)
-
-      self.target_y = Float64()
-      self.target_y.data = self.target_location[1]
-      self.target_y_publisher.publish(self.target_y)
-
-      self.target_z = Float64()
-      self.target_z.data = self.target_location[2]
-      self.target_z_publisher.publish(self.target_z)
 
     # Find Joint Positions when blobs are obfuscated
     # Assumptions are as follows:
@@ -222,6 +200,30 @@ class image_converter:
                             3 / np.linalg.norm(self.blob_location[3,:] - self.blob_location[2,:])) / 3
 
     self.blob_location *= self.distance_ratio
+
+    # Publishing target location
+    if self.distance_ratio is not None:
+      # Assume target is never obfuscated
+      target_info_2 = data.data[-2:] # [x,z] coordinate offrom camera 2
+      target_info_1 = detect_target_center(image1) # [y,z] coordinate from camera 2
+      self.target_location[0] = target_info_2[0] - center_info_2[0,0] # x coordinate relative to robot base frame
+      self.target_location[1] = target_info_1[0] - center_info_1[0,0] # y coordinate relative to robot base frame
+      self.target_location[2] = -(target_info_2[1] - center_info_2[0,1] + target_info_1[1] - center_info_1[0,1])/2 # z coordinate relative to robot base frame
+
+      self.target_location *= self.distance_ratio
+
+      self.target_x = Float64()
+      self.target_x.data = self.target_location[0]
+      self.target_x_publisher.publish(self.target_x)
+
+      self.target_y = Float64()
+      self.target_y.data = self.target_location[1]
+      self.target_y_publisher.publish(self.target_y)
+
+      self.target_z = Float64()
+      self.target_z.data = self.target_location[2]
+      self.target_z_publisher.publish(self.target_z)
+
     self.angle_estimation()
     # print("%0.3f  %0.3f  %0.3f  %0.3f" % tuple(self.joint_angles)) # only looking at the first three decimal places so any noice seen is significant
     
