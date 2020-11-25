@@ -193,9 +193,9 @@ class image_converter:
 
     # cv2.imshow('Obfuscation', self.cv_image1)
 
-    # if self.distance_ratio is None:
+    if self.distance_ratio is None:
       # meter value for a single unit
-    self.distance_ratio = (2.5 / np.linalg.norm(self.blob_location[1,:] - self.blob_location[0,:]) + 
+      self.distance_ratio = (2.5 / np.linalg.norm(self.blob_location[1,:] - self.blob_location[0,:]) + 
                             3.5 / np.linalg.norm(self.blob_location[2,:] - self.blob_location[1,:]) +
                             3 / np.linalg.norm(self.blob_location[3,:] - self.blob_location[2,:])) / 3
 
@@ -225,32 +225,51 @@ class image_converter:
       self.target_z_publisher.publish(self.target_z)
 
     self.angle_estimation()
-    # print("%0.3f  %0.3f  %0.3f  %0.3f" % tuple(self.joint_angles)) # only looking at the first three decimal places so any noice seen is significant
+    print("%0.3f  %0.3f  %0.3f  %0.3f" % tuple(self.joint_angles)) # only looking at the first three decimal places so any noice seen is significant
     
   def angle_estimation(self):
     # Can't easily find joint_angles[0] from blob detection, so assume it is known
 
     # Find second and third joint angles by analysing forward kinematics equation 
     # for the location of the third blob, which is actually the forth joint
-    self.joint_angles[1] = np.arctan2(self.blob_location[2,0] * np.sin(self.joint_angles[0]) 
-                            - self.blob_location[2,1] * np.cos(self.joint_angles[0]), 
-                            self.blob_location[2,2] - 2.5) 
+    x1 = self.blob_location[2,0] * np.sin(self.joint_angles[0]) - self.blob_location[2,1] * np.cos(self.joint_angles[0])
+    x2 = self.blob_location[2,2] - self.blob_location[1,2]
 
-    self.joint_angles[2] = np.arctan2((self.blob_location[2,0] * np.cos(self.joint_angles[0]) 
-                            + self.blob_location[2,1] * np.sin(self.joint_angles[0])) * np.cos(self.joint_angles[1]), 
-                            self.blob_location[2,2] - 2.5) 
+    # print(x1,x2, self.blob_location[2])
+
+    # Helps minimise the influence of small errors
+    if np.abs(x1) < 0.01:
+      x1 = 0
+    if np.abs(x2) < 0.01:
+      x2 = 0
+    if x2 < 0:
+      x1 *= -1
+      x2 *= -1
+
+    self.joint_angles[1] = np.arctan2(x1, x2)
+                             
+    x1 = (self.blob_location[2,0] * np.cos(self.joint_angles[0]) + self.blob_location[2,1] * np.sin(self.joint_angles[0])) * np.cos(self.joint_angles[1])
+    x2 = self.blob_location[2,2] - self.blob_location[1,2]
+    if np.abs(x1) < 0.01:
+      x1 = 0
+    if np.abs(x2) < 0.01:
+      x2 = 0
+    if x2 < 0:
+      x1 *= -1
+      x2 *= -1
+
+    self.joint_angles[2] = np.arctan2(x1, x2) 
 
     # Find the forth joint angle by finding the angle it makes with its unrotated position,
     # then determine the correct sign by checking which has the smaller error
-    v1 = self.blob_location[3] - self.blob_location[2]
-    v2 = self.blob_location[2] - self.blob_location[1]
-    angle = np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+    x1 = self.blob_location[3] - self.blob_location[2]
+    x2 = self.blob_location[2] - self.blob_location[1]
+    angle = np.arccos(np.dot(x1, x2) / (np.linalg.norm(x1) * np.linalg.norm(x2)))
 
     positive = [self.joint_angles[i] for i in range(3)] + [angle]
     negative = [self.joint_angles[i] for i in range(3)] + [-angle]
 
-    if np.linalg.norm(self.blob_location[3] - self.forward_kinematics(positive)) < \
-        np.linalg.norm(self.blob_location[3] - self.forward_kinematics(negative)): 
+    if np.linalg.norm(self.blob_location[3] - self.forward_kinematics(positive)) < np.linalg.norm(self.blob_location[3] - self.forward_kinematics(negative)): 
       self.joint_angles[3] = angle
     else:
       self.joint_angles[3] = -angle
@@ -302,7 +321,6 @@ class image_converter:
     ])
   
   def jacobian(self, angles):
-    # I really hope this is correct
     return np.array(
       [
         [
@@ -500,12 +518,12 @@ def detect_target_center(image):
 
 
   # Testing purposes
-  cv2.imshow("distance_transform", dists)
-  cv2.imshow("template", template)
+  # cv2.imshow("distance_transform", dists)
+  # cv2.imshow("template", template)
   # cv2.imshow("target", target)
   # cv2.imshow("thresholded cropped", thresholded_cropped)
   # cv2.imshow("thresholded", thresholded)
-  cv2.imshow("thresholded copy", thresholded_copy)
+  # cv2.imshow("thresholded copy", thresholded_copy)
   # cv2.imshow("test_region", region1)
   cv2.waitKey(1)
 
@@ -516,11 +534,15 @@ def detect_target_center(image):
     cy = int(moments['m01']/moments['m00'])
     return np.array([cx,cy])
   except:
+<<<<<<< HEAD
+    return np.array([-1,-1])
+=======
     print("Best Chamfer Score: ", np.min(chamfer_scores))
     moments = cv2.moments(threshold_orange(image)) 
     cx = int(moments['m10']/moments['m00'])
     cy = int(moments['m01']/moments['m00'])
     return np.array([cx,cy])
+>>>>>>> 101620925d35752de8783efcf5a01be1f7f22c56
 
 
 # call the class
