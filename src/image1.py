@@ -119,7 +119,7 @@ class image_converter:
     # self.joint3_pub.publish(self.joint3)
     # self.joint4_pub.publish(self.joint4)
     
-    self.test_FK()
+    # self.test_FK()
 
 
   def im2_update(self,data):
@@ -622,7 +622,6 @@ def detect_target_center(image):
     cy = int(moments['m01']/moments['m00'])
     return np.array([cx,cy])
   except:
-    print("Best Chamfer Score: ", np.min(chamfer_scores))
     moments = cv2.moments(threshold_orange(image)) 
     cx = int(moments['m10']/moments['m00'])
     cy = int(moments['m01']/moments['m00'])
