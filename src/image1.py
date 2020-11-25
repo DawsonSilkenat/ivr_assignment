@@ -534,15 +534,11 @@ def detect_target_center(image):
     cy = int(moments['m01']/moments['m00'])
     return np.array([cx,cy])
   except:
-<<<<<<< HEAD
-    return np.array([-1,-1])
-=======
     print("Best Chamfer Score: ", np.min(chamfer_scores))
     moments = cv2.moments(threshold_orange(image)) 
     cx = int(moments['m10']/moments['m00'])
     cy = int(moments['m01']/moments['m00'])
     return np.array([cx,cy])
->>>>>>> 101620925d35752de8783efcf5a01be1f7f22c56
 
 
 # call the class
