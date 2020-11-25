@@ -36,6 +36,12 @@ class image_converter:
     self.blob_location = np.zeros((4,3))
     self.joint_angles = np.zeros(4)
 
+    # initialize a publisher to publish the target's 3d location
+    self.target_x_publisher = rospy.Publisher("/target/x_location", Float64, queue_size = 1)
+    self.target_y_publisher = rospy.Publisher("/target/y_location", Float64, queue_size = 1)
+    self.target_z_publisher = rospy.Publisher("/target/z_location", Float64, queue_size = 1)
+    self.target_location = np.zeros(3)
+
     # meter value of a single unit
     self.distance_ratio = None
 
@@ -55,7 +61,7 @@ class image_converter:
     # Visualisation of centers
     image = rgb_normalize(self.cv_image1)
 
-    c = detect_orange_center(image)
+    c = detect_target_center(image)
     #self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
     #self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
     #self.cv_image1[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
@@ -117,7 +123,29 @@ class image_converter:
     image1 = rgb_normalize(self.cv_image1)
     
     center_info_1 = np.array([detect_yellow_center(image1), detect_blue_center(image1), detect_green_center(image1), detect_red_center(image1)])
-    center_info_2 = np.reshape(np.array(data.data), (-1,2))
+    center_info_2 = np.reshape(np.array(data.data), (-1,2))[:-1,:]
+    
+    if self.distance_ratio is not None:
+    # Assume target is never obfuscated
+      target_info_2 = data.data[-2:] # [x,z] coordinate offrom camera 2
+      target_info_1 = detect_target_center(image1) # [y,z] coordinate from camera 2
+      self.target_location[0] = target_info_2[0] - center_info_2[0,0] # x coordinate relative to robot base frame
+      self.target_location[1] = target_info_1[0] - center_info_1[0,0] # y coordinate relative to robot base frame
+      self.target_location[2] = -(target_info_2[1] - center_info_2[0,1] + target_info_1[1] - center_info_1[0,1])/2 # z coordinate relative to robot base frame
+
+      self.target_location *= self.distance_ratio
+
+      self.target_x = Float64()
+      self.target_x.data = self.target_location[0]
+      self.target_x_publisher.publish(self.target_x)
+
+      self.target_y = Float64()
+      self.target_y.data = self.target_location[1]
+      self.target_y_publisher.publish(self.target_y)
+
+      self.target_z = Float64()
+      self.target_z.data = self.target_location[2]
+      self.target_z_publisher.publish(self.target_z)
 
     # Find Joint Positions when blobs are obfuscated
     # Assumptions are as follows:
@@ -407,7 +435,7 @@ def threshold_orange(image):
 
   return thresholded
 
-def detect_orange_center(image):
+def detect_target_center(image):
   thresholded = threshold_orange(image)
 
   thresholded_copy = thresholded
@@ -504,7 +532,15 @@ def detect_orange_center(image):
     cy = int(moments['m01']/moments['m00'])
     return np.array([cx,cy])
   except:
+<<<<<<< HEAD
     return np.array([-1,-1])
+=======
+    print("Best Chamfer Score: ", np.min(chamfer_scores))
+    moments = cv2.moments(threshold_orange(image)) 
+    cx = int(moments['m10']/moments['m00'])
+    cy = int(moments['m01']/moments['m00'])
+    return np.array([cx,cy])
+>>>>>>> 101620925d35752de8783efcf5a01be1f7f22c56
 
 
 # call the class
