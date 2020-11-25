@@ -119,7 +119,7 @@ class image_converter:
     # self.joint3_pub.publish(self.joint3)
     # self.joint4_pub.publish(self.joint4)
     
-    #self.test_FK()
+    self.test_FK()
 
 
   def im2_update(self,data):
@@ -246,20 +246,20 @@ class image_converter:
 
     # Closed Loop Control
 
-    new_angles = self.closed_loop_control(self.target_location, self.joint_angles)
+    #new_angles = self.closed_loop_control(self.target_location, self.joint_angles)
     
     # Publish the robot's new joint inputs
-    self.joint2 = Float64()
-    self.joint3 = Float64()
-    self.joint4 = Float64()
+    #self.joint2 = Float64()
+    #self.joint3 = Float64()
+    #self.joint4 = Float64()
 
-    self.joint2.data = new_angles[0]
-    self.joint3.data = new_angles[1]
-    self.joint4.data = new_angles[2]
+    #self.joint2.data = new_angles[0]
+    #self.joint3.data = new_angles[1]
+    #self.joint4.data = new_angles[2]
 
-    self.joint2_pub.publish(self.joint2)
-    self.joint3_pub.publish(self.joint3)
-    self.joint4_pub.publish(self.joint4)
+    #self.joint2_pub.publish(self.joint2)
+    #self.joint3_pub.publish(self.joint3)
+    #self.joint4_pub.publish(self.joint4)
 
   def angle_estimation(self):
     # Can't easily find joint_angles[0] from blob detection, so assume it is known
@@ -398,24 +398,34 @@ class image_converter:
     )
 
   def test_FK(self):
-    q0 = [np.pi/2, np.pi/2, np.pi/2, np.pi/2]
-    print("Calculated Position: ", self.forward_kinematics(q0))
+    # q = [np.pi/2, np.pi/2, np.pi/2, -1 * np.pi/2] # first test
+    # q = [-1 * np.pi/2, -1 * np.pi/2, -1 * np.pi/2, np.pi/2] # second test
+    # q = [np.pi/20, np.pi/20, np.pi/20, np.pi/20] # third test
+    # q = [-1 * np.pi/20, -1 * np.pi/20, -1 * np.pi/20, -1 * np.pi/20] # fourth test
+    # q = [-1 * np.pi/4, np.pi/4, -1 * np.pi/4, np.pi/4] # fifth test
+    # q = [np.pi/4, -1 * np.pi/4, np.pi/4, -1 * np.pi/4] # sixth test
+    # q = [-1 * np.pi/2, np.pi/3, np.pi/4, -1 * np.pi/5] # seventh test
+    # q = [np.pi/5, -1 * np.pi/4, -1 * np.pi/3, np.pi/2] # eigth test
+    # q = [np.pi/3, np.pi/30, np.pi/3, np.pi/30] # ninth test
+    q = [np.pi/2.5, np.pi/25, np.pi/3.5, np.pi/35] # tenth test
+
+    print("Calculated Position: ", self.forward_kinematics(q))
 
     # Publish the joint inputs used for the current test
     self.joint1 = Float64()
-    self.joint1.data = q0[0]
+    self.joint1.data = q[0]
     self.joint1_pub.publish(self.joint1)
 
     self.joint2 = Float64()
-    self.joint2.data = q0[1]
+    self.joint2.data = q[1]
     self.joint2_pub.publish(self.joint2)
 
     self.joint3 = Float64()
-    self.joint3.data = q0[2]
+    self.joint3.data = q[2]
     self.joint3_pub.publish(self.joint3)
 
     self.joint4 = Float64()
-    self.joint4.data = q0[3]
+    self.joint4.data = q[3]
     self.joint4_pub.publish(self.joint4)
     
     print("Estimated Position: ", self.blob_location[3,:])
