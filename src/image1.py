@@ -92,8 +92,14 @@ class image_converter:
 
 
   def im2_update(self,data):
-    image1 = rgb_normalize(self.cv_image1)
-    
+    # image1 = rgb_normalize(self.cv_image1)
+    image1 = cv2.inRange(self.cv_image1, np.array([0,0,0]), np.array([10,10,10]))
+    image1 = cv2.erode(image1, np.ones(3, np.uint8))
+    image1 = cv2.dilate(image1, np.ones(3, np.uint8))
+
+    cv2.imshow("thresholded", image1)
+    cv2.waitKey(1)
+
     center_info_1 = np.array([detect_yellow_center(image1), detect_blue_center(image1), detect_green_center(image1), detect_red_center(image1)])
     center_info_2 = np.reshape(np.array(data.data), (-1,2))[:-1,:]
 
