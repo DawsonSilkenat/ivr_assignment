@@ -42,6 +42,10 @@ class image_converter:
     self.target_z_publisher = rospy.Publisher("/target/z_location", Float64, queue_size = 1)
     self.target_location = np.zeros(3)
 
+    # initialize a publisher to publish the estimated joint angles
+    self.estimated_joint2_publisher = rospy.Publisher("/joint2/estimated_angle", Float64, queue_size = 1)
+    self.estimated_joint3_publisher = rospy.Publisher("/joint3/estimated_angle", Float64, queue_size = 1)
+    self.estimated_joint4_publisher = rospy.Publisher("/joint4/estimated_angle", Float64, queue_size = 1)
     # meter value of a single unit
     self.distance_ratio = None
 
@@ -110,12 +114,6 @@ class image_converter:
     # self.joint2_pub.publish(self.joint2)
     # self.joint3_pub.publish(self.joint3)
     # self.joint4_pub.publish(self.joint4)
-
-    # print(self.blob_location[0], self.blob_location[1])
-    # print(self.blob_location[2] - np.array(
-      # [3.5 * np.sin(self.joint2.data), 
-      # -3.5 * np.sin(self.joint2.data) * np.cos(self.joint3.data),
-      # 3.5 * np.cos(self.joint2.data) * np.cos(self.joint3.data)]))
     
 
 
@@ -225,7 +223,21 @@ class image_converter:
       self.target_z_publisher.publish(self.target_z)
 
     self.angle_estimation()
-    print("%0.3f  %0.3f  %0.3f  %0.3f" % tuple(self.joint_angles)) # only looking at the first three decimal places so any noice seen is significant
+
+    #print("%0.3f  %0.3f  %0.3f  %0.3f" % tuple(self.joint_angles)) # only looking at the first three decimal places so any noice seen is significant
+
+    # Publish joint angles for joints 2,3,4
+    self.estimated_joint2 = Float64()
+    self.estimated_joint2.data = self.joint_angles[1]
+    self.estimated_joint2_publisher.publish(self.estimated_joint2)
+
+    self.estimated_joint3 = Float64()
+    self.estimated_joint3.data = self.joint_angles[2]
+    self.estimated_joint3_publisher.publish(self.estimated_joint3)
+
+    self.estimated_joint4 = Float64()
+    self.estimated_joint4.data = self.joint_angles[3]
+    self.estimated_joint4_publisher.publish(self.estimated_joint4)
     
   def angle_estimation(self):
     # Can't easily find joint_angles[0] from blob detection, so assume it is known
