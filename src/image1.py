@@ -25,11 +25,15 @@ class image_converter:
     # initialize the bridge between openCV and ROS
     self.bridge = CvBridge()
     # initialize publishers to send inputs to the robot's joints
+    self.joint1_pub = rospy.Publisher("/robot/joint1_position_controller/command", Float64, queue_size=10)
     self.joint2_pub = rospy.Publisher("/robot/joint2_position_controller/command", Float64, queue_size=10)
     self.joint3_pub = rospy.Publisher("/robot/joint3_position_controller/command", Float64, queue_size=10)
     self.joint4_pub = rospy.Publisher("/robot/joint4_position_controller/command", Float64, queue_size=10)
 
     self.start_time = rospy.get_time()
+
+    self.previous_time = rospy.get_time()
+    self.previous_error = 0
 
     # initialize subscribers to recieve blob centers from image2
     self.blob_subscriber = rospy.Subscriber("/camera2/blob_data", Int64MultiArray, self.im2_update)
@@ -115,6 +119,7 @@ class image_converter:
     # self.joint3_pub.publish(self.joint3)
     # self.joint4_pub.publish(self.joint4)
     
+    #self.test_FK()
 
 
   def im2_update(self,data):
@@ -238,7 +243,24 @@ class image_converter:
     self.estimated_joint4 = Float64()
     self.estimated_joint4.data = self.joint_angles[3]
     self.estimated_joint4_publisher.publish(self.estimated_joint4)
+
+    # Closed Loop Control
+
+    new_angles = self.closed_loop_control(self.target_location, self.joint_angles)
     
+    # Publish the robot's new joint inputs
+    self.joint2 = Float64()
+    self.joint3 = Float64()
+    self.joint4 = Float64()
+
+    self.joint2.data = new_angles[0]
+    self.joint3.data = new_angles[1]
+    self.joint4.data = new_angles[2]
+
+    self.joint2_pub.publish(self.joint2)
+    self.joint3_pub.publish(self.joint3)
+    self.joint4_pub.publish(self.joint4)
+
   def angle_estimation(self):
     # Can't easily find joint_angles[0] from blob detection, so assume it is known
 
@@ -375,7 +397,51 @@ class image_converter:
       ]
     )
 
+  def test_FK(self):
+    q0 = [np.pi/2, np.pi/2, np.pi/2, np.pi/2]
+    print("Calculated Position: ", self.forward_kinematics(q0))
+
+    # Publish the joint inputs used for the current test
+    self.joint1 = Float64()
+    self.joint1.data = q0[0]
+    self.joint1_pub.publish(self.joint1)
+
+    self.joint2 = Float64()
+    self.joint2.data = q0[1]
+    self.joint2_pub.publish(self.joint2)
+
+    self.joint3 = Float64()
+    self.joint3.data = q0[2]
+    self.joint3_pub.publish(self.joint3)
+
+    self.joint4 = Float64()
+    self.joint4.data = q0[3]
+    self.joint4_pub.publish(self.joint4)
     
+    print("Estimated Position: ", self.blob_location[3,:])
+
+  def closed_loop_control(self, target_position, angles):
+    k_d = np.diag(np.full(3, 0.1))
+    k_p = np.diag(np.full(3, 4))
+
+    time = rospy.get_time()
+    dt = time - self.previous_time
+    self.previous_time = time 
+
+    error = target_position - self.forward_kinematics(angles)
+    dE = (error - self.previous_error) / dt 
+    self.previous_error = error
+
+    jacobian = self.jacobian(angles)[:,1:] # choose to keep first joint fixed
+    
+    # just np.linalg.pinv(jacobian) is giving me an error, not sure why
+    jacobian_inverse = np.linalg.pinv(jacobian.dot(jacobian.T)).dot(jacobian.T)
+
+    
+    dq = jacobian_inverse.dot(k_d.dot(dE) + k_p.dot(error))
+
+    new_angles = angles[1:] + dq * dt
+    return new_angles
 
 def rgb_normalize(image):
   # Use RGB normalization to handle the varying lighting
