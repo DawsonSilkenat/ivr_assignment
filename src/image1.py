@@ -287,7 +287,7 @@ class image_converter:
           + np.cos(angles[0]) * np.cos(angles[2]) * (3.5  + 3 * np.cos(angles[3])),
 
           - np.sin(angles[0]) * np.sin(angles[1]) * np.cos(angles[2]) * 3 * np.sin(angles[3])
-          + np.cos(angles[0]) * np.sin(angles[2]) * 3 * np.sin(angles[3])
+          - np.cos(angles[0]) * np.sin(angles[2]) * 3 * np.sin(angles[3])
           + 3 * np.sin(angles[0]) * np.cos(angles[1]) * np.cos(angles[3]), 
         ],
 
