@@ -221,20 +221,20 @@ class image_converter:
 
     # Closed Loop Control
 
-    #new_angles = self.closed_loop_control(self.target_location, self.joint_angles)
+    new_angles = self.closed_loop_control(self.target_location, self.joint_angles)
     
     # Publish the robot's new joint inputs
-    #self.joint2 = Float64()
-    #self.joint3 = Float64()
-    #self.joint4 = Float64()
+    self.joint2 = Float64()
+    self.joint3 = Float64()
+    self.joint4 = Float64()
 
-    #self.joint2.data = new_angles[0]
-    #self.joint3.data = new_angles[1]
-    #self.joint4.data = new_angles[2]
+    self.joint2.data = new_angles[0]
+    self.joint3.data = new_angles[1]
+    self.joint4.data = new_angles[2]
 
-    #self.joint2_pub.publish(self.joint2)
-    #self.joint3_pub.publish(self.joint3)
-    #self.joint4_pub.publish(self.joint4)
+    self.joint2_pub.publish(self.joint2)
+    self.joint3_pub.publish(self.joint3)
+    self.joint4_pub.publish(self.joint4)
 
   def angle_estimation(self):
     # Can't easily find joint_angles[0] from blob detection, so assume it is known
@@ -344,7 +344,7 @@ class image_converter:
           + np.cos(angles[0]) * np.cos(angles[2]) * (3.5  + 3 * np.cos(angles[3])),
 
           - np.sin(angles[0]) * np.sin(angles[1]) * np.cos(angles[2]) * 3 * np.sin(angles[3])
-          + np.cos(angles[0]) * np.sin(angles[2]) * 3 * np.sin(angles[3])
+          - np.cos(angles[0]) * np.sin(angles[2]) * 3 * np.sin(angles[3])
           + 3 * np.sin(angles[0]) * np.cos(angles[1]) * np.cos(angles[3]), 
         ],
 
