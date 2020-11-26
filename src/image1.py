@@ -22,6 +22,8 @@ class image_converter:
     self.image_pub1 = rospy.Publisher("image_topic1",Image, queue_size = 1)
     # initialize a subscriber to recieve messages rom a topic named /robot/camera1/image_raw and use callback function to recieve data
     self.image_sub1 = rospy.Subscriber("/camera1/robot/image_raw",Image,self.callback1)
+    # intialize a subsriber to recieve the image seen by camera 2
+    self.image_sub2 = rospy.Subscriber("/camera2/robot/image_raw", Image, self.callback2)
     # initialize the bridge between openCV and ROS
     self.bridge = CvBridge()
     # initialize publishers to send inputs to the robot's joints
@@ -67,14 +69,14 @@ class image_converter:
 
     # Hardcoded blue and yellow joint positions which are both fixed
     # Blue Joint
-    self.cv_image1[469:471, 398:400, 0] = 0
-    self.cv_image1[469:471, 398:400, 1] = 0
-    self.cv_image1[469:471, 398:400, 2] = 255
+    #self.cv_image1[469:471, 398:400, 0] = 0
+    #self.cv_image1[469:471, 398:400, 1] = 0
+    #self.cv_image1[469:471, 398:400, 2] = 255
 
     # Yellow Joint
-    self.cv_image1[532:534, 398:400, 0] = 0
-    self.cv_image1[532:534, 398:400, 1] = 255
-    self.cv_image1[532:534, 398:400, 2] = 0
+    #self.cv_image1[532:534, 398:400, 0] = 0
+    #self.cv_image1[532:534, 398:400, 1] = 255
+    #self.cv_image1[532:534, 398:400, 2] = 0
 
     cv2.imshow('window1', self.cv_image1)
     cv2.waitKey(1)
@@ -95,15 +97,21 @@ class image_converter:
     self.joint3.data = (np.pi / 2) * np.sin((np.pi / 18) * current_time)
     self.joint4.data = (np.pi / 2) * np.sin((np.pi / 20) * current_time)
 
-    # self.joint2_pub.publish(self.joint2)
-    # self.joint3_pub.publish(self.joint3)
-    # self.joint4_pub.publish(self.joint4)
+    self.joint2_pub.publish(self.joint2)
+    self.joint3_pub.publish(self.joint3)
+    self.joint4_pub.publish(self.joint4)
     
     # self.test_FK()
 
+  def callback2(self,data):
+    try:
+      self.cv_image2 = self.bridge.imgmsg_to_cv2(data, "bgr8")
+    except CvBridgeError as e:
+      print(e)
 
-  def im2_update(self,data):
-    # self.distance_ratio = 0.035573 # from using the full black thresholded image
+    #cv2.imshow("camera2_image1", self.cv_image2)
+    #cv2.waitKey(1)
+
     self.distance_ratio = 0.038714 # from using blob detection with coloured joints
 
     center_info_1 = np.zeros((4,2)) # info from camera 1
@@ -123,15 +131,84 @@ class image_converter:
     center_info_2[1,1] = 470
     self.blob_location[1,:] = np.array([0, 0, 2.5]) # location relative to robot base frame in meters
 
-    test = extension_chamfer_l2(self.cv_image1, self.distance_ratio, center_info_1[1,0], center_info_1[1,1])
+    angle_l2_cam1 = extension_chamfer_l2(self.cv_image1, self.distance_ratio, center_info_1[1,0], center_info_1[1,1]) # theta1
+    angle_l2_cam2 = extension_chamfer_l2(self.cv_image2, self.distance_ratio, center_info_2[1,0], center_info_2[1,1]) # theta2
 
-    # Calculate distance ratio to be hard-coded assuming robot is in starting position (all joints are 0)
-    # where_black = np.argwhere(image1)
-    # y_max = np.max(where_black[:,0])
-    # y_min = np.min(where_black[:,0])
-    # distance_ratio = 9 / (y_max - y_min) # pixel to distance ratio, using height of robot = 9m
-    # print(distance_ratio) # returns 0.035573 from starting position
+    # Length of link 2 from camera 1
+    length2_info_1 = np.sqrt( (3.5 ** 2) / ( ( np.cos(angle_l2_cam1) / np.cos(angle_l2_cam2) ) ** 2 + np.sin(angle_l2_cam1) ** 2  ) )
+    # Length of link 2 from camera 2
+    length2_info_2 = length2_info_1 * ( np.cos(angle_l2_cam1) / np.cos(angle_l2_cam2) )
 
+    # where these coordinates are relative to blob 2
+    relative_x = -length2_info_2 * np.sin(angle_l2_cam2) # negative due to orientation of the axis
+    relative_y = -length2_info_1 * np.sin(angle_l2_cam1) # negative due to orientation of the axis
+    relative_z = length2_info_1 * np.cos(angle_l2_cam1) # we assumed z is the same from both cameras
+    
+    self.blob_location[2,0] = relative_x + self.blob_location[1,0]
+    self.blob_location[2,1] = relative_y + self.blob_location[1,1]
+    self.blob_location[2,2] = self.blob_location[1,2] - relative_z
+
+    center_info_1[2,0] = int(round((relative_y/self.distance_ratio) + center_info_1[1,0]))
+    center_info_1[2,1] = int(round(center_info_1[1,1] - (relative_z/self.distance_ratio)))
+    center_info_2[2,0] = int(round((relative_x/self.distance_ratio) + center_info_2[1,0]))
+    center_info_2[2,1] = int(round(center_info_1[2,1]))
+
+    
+    angle_l3_cam1 = extension_chamfer_l3(self.cv_image1, self.distance_ratio, center_info_1[2,0], center_info_1[2,1], angle_l2_cam1)
+    angle_l3_cam1 = angle_l3_cam1 + angle_l2_cam1 # add on previous joint angle to give angle from the vertical line
+    angle_l3_cam2 = extension_chamfer_l3(self.cv_image2, self.distance_ratio, center_info_2[2,0], center_info_2[2,1], angle_l2_cam2)
+    angle_l3_cam2 = angle_l3_cam2 + angle_l2_cam2
+
+    #print(angle_l3_cam1, angle_l3_cam2)
+
+    # Length of link 3 from camera 1
+    length3_info_1 = np.sqrt( (3 ** 2) / ( ( np.cos(angle_l3_cam1) / np.cos(angle_l3_cam2) ) ** 2 + np.sin(angle_l3_cam1) ** 2  ) )
+    # Length of link 3 from camera 2
+    length3_info_2 = length3_info_1 * ( np.cos(angle_l3_cam1) / np.cos(angle_l3_cam2) )
+
+    # where these coordinates are relative to blob 3
+    relative_x = -length3_info_2 * np.sin(angle_l3_cam2) # negative due to orientation of the axis
+    relative_y = -length3_info_1 * np.sin(angle_l3_cam1) # negative due to orientation of the axis
+    relative_z = length3_info_1 * np.cos(angle_l3_cam1) # we assumed z is the same from both cameras
+
+    self.blob_location[3,0] = relative_x + self.blob_location[2,0]
+    self.blob_location[3,1] = relative_y + self.blob_location[2,1]
+    self.blob_location[3,2] = self.blob_location[2,2] - relative_z
+
+    center_info_1[3,0] = int(round((relative_y/self.distance_ratio) + center_info_1[2,0]))
+    center_info_1[3,1] = int(round(center_info_1[2,1] - (relative_z/self.distance_ratio)))
+    center_info_2[3,0] = int(round((relative_x/self.distance_ratio) + center_info_2[2,0]))
+    center_info_2[3,1] = int(round(center_info_1[3,1]))
+
+    # Green dot on estimated position for end effector in both cameras to test
+    #self.cv_image1[int(center_info_1[3,1] - 1):int(center_info_1[3,1] + 1), int(center_info_1[3,0] - 1):int(center_info_1[3,0] + 1), 0] = 0
+    #self.cv_image1[int(center_info_1[3,1] - 1):int(center_info_1[3,1] + 1), int(center_info_1[3,0] - 1):int(center_info_1[3,0] + 1), 1] = 255
+    #self.cv_image1[int(center_info_1[3,1] - 1):int(center_info_1[3,1] + 1), int(center_info_1[3,0] - 1):int(center_info_1[3,0] + 1), 2] = 0
+
+    #self.cv_image2[int(center_info_2[3,1] - 1):int(center_info_2[3,1] + 1), int(center_info_2[3,0] - 1):int(center_info_2[3,0] + 1), 0] = 0
+    #self.cv_image2[int(center_info_2[3,1] - 1):int(center_info_2[3,1] + 1), int(center_info_2[3,0] - 1):int(center_info_2[3,0] + 1), 1] = 255
+    #self.cv_image2[int(center_info_2[3,1] - 1):int(center_info_2[3,1] + 1), int(center_info_2[3,0] - 1):int(center_info_2[3,0] + 1), 2] = 0
+    cv2.imshow("estimation1", self.cv_image1)
+    cv2.imshow("estimation2", self.cv_image2)
+    cv2.waitKey(1)
+
+    self.angle_estimation()
+
+    # Publish estimated joint angles for joints 2,3,4
+    self.estimated_joint2 = Float64()
+    self.estimated_joint2.data = self.joint_angles[1]
+    self.estimated_joint2_publisher.publish(self.estimated_joint2)
+
+    self.estimated_joint3 = Float64()
+    self.estimated_joint3.data = self.joint_angles[2]
+    self.estimated_joint3_publisher.publish(self.estimated_joint3)
+
+    self.estimated_joint4 = Float64()
+    self.estimated_joint4.data = self.joint_angles[3]
+    self.estimated_joint4_publisher.publish(self.estimated_joint4)
+
+  def im2_update(self,data):
+    test = 0
     # Find Joint Positions when blobs are obfuscated
     # Assumptions are as follows:
     # Yellow blob will never be completely obfuscated
@@ -551,30 +628,114 @@ def extension_chamfer_l2(image, distance_ratio, cx, cy):
   thresholded = cv2.erode(thresholded, np.ones(3, np.uint8))
   thresholded = cv2.dilate(thresholded, np.ones(3, np.uint8))
 
-  pixel_link_length = int(round(3 / distance_ratio)) # link length in pixels
-  y_min = int(cy - pixel_link_length - 10)
-  y_max = int(cy + 10)
-  x_min = int(cx - pixel_link_length - 10)
-  x_max = int(cx + pixel_link_length + 10)
+  pixel_link_length = int(round(3.5/ distance_ratio)) # link length in pixels
+  y_min = int(cy - pixel_link_length)
+  y_max = int(cy + pixel_link_length)
+  x_min = int(cx - pixel_link_length)
+  x_max = int(cx + pixel_link_length)
   cropped_thresholded = thresholded[y_min:y_max, x_min:x_max]
 
-  cv2.imshow("cropped thresholded", cropped_thresholded)
-  cv2.waitKey(1)
+  dists = cv2.distanceTransform(cv2.bitwise_not(cropped_thresholded), cv2.DIST_L2, 0)
 
   template_path = os.path.realpath("src/ivr_assignment/src/link2_template.png")
   template = cv2.imread(template_path, 0)
+
+  # modified_template is the same shape as the cropped and thresholded region
+  # but it contains the template link at the point where the link should be in the
+  # cropped and threshold image if the joint angle was 0
   modified_template = np.zeros((y_max - y_min, x_max - x_min))
-  y_min_template = modified_template.shape[0] - template.shape[0]
-  y_max_template = modified_template.shape[0]
-  x_min_template = int(round(modified_template.shape[1]/2 - template.shape[1]/2))
-  x_max_template = int(round(modified_template.shape[1]/2 + template.shape[1]/2))
+  y_min_template = int(round(modified_template.shape[0]/2)) - template.shape[0]
+  y_max_template = int(round(modified_template.shape[0]/2))
+  x_min_template = int(round(modified_template.shape[1]/2) - np.floor(template.shape[1]/2))
+  x_max_template = int(round(modified_template.shape[1]/2) + np.ceil(template.shape[1]/2))
   modified_template[y_min_template:y_max_template, x_min_template:x_max_template] = template
 
-  cv2.imshow("modified_template", modified_template)
-  cv2.waitKey(1)
+  #cv2.imshow("modified_template", modified_template)
+  #cv2.waitKey(1)
 
-  return 0
+  angle_range = np.arange(-150, 151, 1)
+  chamfer_scores = np.zeros(angle_range.shape[0])
+  for i in np.arange(-150,151,1):
+    # Note that rotating with the modified template means that the link will not be resized so it will not
+    # become thicker than it really is when rotated.
+    rotation_matrix = cv2.getRotationMatrix2D((int(round(modified_template.shape[1]/2)), int(round(modified_template.shape[0]/2))), i, 1)
+    rotated_mod_template = cv2.warpAffine(modified_template, rotation_matrix, (dists.shape[1], dists.shape[0]))
 
+    chamfer_score = np.sum(rotated_mod_template * dists)
+    chamfer_scores[i+150] = chamfer_score
+
+  best_chamfer_score = np.min(chamfer_scores)
+  best_angle = ((np.argmin(chamfer_scores)-150)*np.pi)/180 # as radians
+  #print("Best chamfer score = ", best_chamfer_score)
+  #print("Best Angle = ", best_angle)
+
+  #rotation_matrix = cv2.getRotationMatrix2D((int(round(modified_template.shape[1]/2)), int(round(modified_template.shape[0]/2))), (best_angle*180)/np.pi, 1)
+  #best_rotated_mod_template = cv2.warpAffine(modified_template, rotation_matrix, (dists.shape[1], dists.shape[0]))
+  #cv2.imshow("best_rotated_mod_template", best_rotated_mod_template)
+  #cv2.imshow("cropped_thresholded", cropped_thresholded)
+  #cv2.waitKey(1)
+
+  return best_angle
+
+# Pass center of the 3rd blob as cx and cy aswel as the angle of the previous link
+# from the same camera (AS RADIANS)
+def extension_chamfer_l3(image, distance_ratio, cx, cy, previous_angle):
+  thresholded = cv2.inRange(image, (0,0,0), (10,10,10))
+  thresholded = cv2.erode(thresholded, np.ones(3, np.uint8))
+  thresholded = cv2.dilate(thresholded, np.ones(3, np.uint8))
+
+  pixel_link_length = int(round(3/ distance_ratio)) # link length in pixels
+  y_min = int(cy - pixel_link_length)
+  y_max = int(cy + pixel_link_length)
+  x_min = int(cx - pixel_link_length)
+  x_max = int(cx + pixel_link_length)
+  cropped_thresholded = thresholded[y_min:y_max, x_min:x_max]
+
+  dists = cv2.distanceTransform(cv2.bitwise_not(cropped_thresholded), cv2.DIST_L2, 0)
+
+  template_path = os.path.realpath("src/ivr_assignment/src/link3_template.png")
+  template = cv2.imread(template_path, 0)
+
+  # modified_template is the same shape as the cropped and thresholded region
+  # but it contains the template link at the point where the link should be in the
+  # cropped and threshold image if the joint angle was 0
+  modified_template = np.zeros((y_max - y_min, x_max - x_min))
+  y_min_template = int(round(modified_template.shape[0]/2)) - template.shape[0]
+  y_max_template = int(round(modified_template.shape[0]/2))
+  x_min_template = int(round(modified_template.shape[1]/2) - np.floor(template.shape[1]/2))
+  x_max_template = int(round(modified_template.shape[1]/2) + np.ceil(template.shape[1]/2))
+  modified_template[y_min_template:y_max_template, x_min_template:x_max_template] = template
+
+  # Start with the link template rotated in the angle of the previous joint
+  rotation_matrix = cv2.getRotationMatrix2D((int(round(modified_template.shape[1]/2)), int(round(modified_template.shape[0]/2))), (previous_angle*180)/np.pi, 1)
+  modified_template = cv2.warpAffine(modified_template, rotation_matrix, (dists.shape[1], dists.shape[0]))
+
+  #cv2.imshow("modified_template", modified_template)
+  #cv2.waitKey(1)
+
+  angle_range = np.arange(-150, 151, 1)
+  chamfer_scores = np.zeros(angle_range.shape[0])
+  for i in np.arange(-150,151,1):
+    # Note that rotating with the modified template means that the link will not be resized so it will not
+    # become thicker than it really is when rotated.
+    rotation_matrix = cv2.getRotationMatrix2D((int(round(modified_template.shape[1]/2)), int(round(modified_template.shape[0]/2))), i, 1)
+    rotated_mod_template = cv2.warpAffine(modified_template, rotation_matrix, (dists.shape[1], dists.shape[0]))
+
+    chamfer_score = np.sum(rotated_mod_template * dists)
+    chamfer_scores[i+150] = chamfer_score
+
+  best_chamfer_score = np.min(chamfer_scores)
+  best_angle = ((np.argmin(chamfer_scores)-150)*np.pi)/180 # as radians
+  #print("Best chamfer score = ", best_chamfer_score)
+  #print("Best Angle = ", best_angle)
+
+  #rotation_matrix = cv2.getRotationMatrix2D((int(round(modified_template.shape[1]/2)), int(round(modified_template.shape[0]/2))), (best_angle*180)/np.pi, 1)
+  #best_rotated_mod_template = cv2.warpAffine(modified_template, rotation_matrix, (dists.shape[1], dists.shape[0]))
+  #cv2.imshow("best_rotated_mod_template", best_rotated_mod_template)
+  #cv2.imshow("cropped_thresholded", cropped_thresholded)
+  #cv2.waitKey(1)
+
+  return best_angle
 
 
 # call the class

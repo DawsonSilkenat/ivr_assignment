@@ -53,31 +53,31 @@ class image_converter:
 
     self.blob_center_publisher.publish(self.blob_centers)
 
-    c = detect_target_center(image)
+    #c = detect_target_center(image)
     # print(c)
-    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
-    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
-    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
+    #self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
+    #self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
+    #self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
 
-    c = detect_yellow_center(image)
-    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
-    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
-    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
+    #c = detect_yellow_center(image)
+    #self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
+    #self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
+    #self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
 
-    c = detect_blue_center(image)
-    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
-    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
-    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
+    #c = detect_blue_center(image)
+    #self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
+    #self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
+    #self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
 
-    c = detect_green_center(image)
-    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
-    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
-    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
+    #c = detect_green_center(image)
+    #self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
+    #self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 0
+    #self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 255
 
-    c = detect_red_center(image)
-    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
-    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 255
-    self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 0
+    #c = detect_red_center(image)
+    #self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 0] = 0
+    #self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 1] = 255
+    #self.cv_image2[c[1] - 1:c[1] + 1, c[0] - 1: c[0] + 1, 2] = 0
 
     im2=cv2.imshow('window2', self.cv_image2)
     cv2.waitKey(1)
