@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+# IMPORTANT:
+# Make sure to run "image1.py" and "image2.py" from the catkin_make folder
+# with this repository's contents inside of the catkin_make/src directory!
+
 import roslib
 import sys
 import os
