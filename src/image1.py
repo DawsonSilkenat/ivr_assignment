@@ -65,6 +65,17 @@ class image_converter:
     # Uncomment if you want to save the image
     #cv2.imwrite('image_copy.png', cv_image)
 
+    # Hardcoded blue and yellow joint positions which are both fixed
+    # Blue Joint
+    self.cv_image1[469:471, 398:400, 0] = 0
+    self.cv_image1[469:471, 398:400, 1] = 0
+    self.cv_image1[469:471, 398:400, 2] = 255
+
+    # Yellow Joint
+    self.cv_image1[532:534, 398:400, 0] = 0
+    self.cv_image1[532:534, 398:400, 1] = 255
+    self.cv_image1[532:534, 398:400, 2] = 0
+
     cv2.imshow('window1', self.cv_image1)
     cv2.waitKey(1)
     # Publish the results
@@ -92,19 +103,27 @@ class image_converter:
 
 
   def im2_update(self,data):
-    image1 = cv2.inRange(self.cv_image1, (0,0,0), (10,10,10))
-    image1 = cv2.erode(image1, np.ones(3, np.uint8))
-    image1 = cv2.dilate(image1, np.ones(3, np.uint8))
+    # self.distance_ratio = 0.035573 # from using the full black thresholded image
+    self.distance_ratio = 0.038714 # from using blob detection with coloured joints
 
-    distance_ratio = 0.035573
+    center_info_1 = np.zeros((4,2)) # info from camera 1
+    center_info_2 = np.zeros((4,2)) #  info from camera 2
 
-    # Joint 1 (blue joint) has a fixed position
-    joint1_location = [0, 0, 2.5 * distance_ratio] #[x, y, z]
+    # Hard code yellow blob position from previous tasks with non black joints
+    center_info_1[0,0] = 399
+    center_info_1[0,1] = 533
+    center_info_2[0,0] = 399
+    center_info_2[0,1] = 533
+    self.blob_location[0,:] = np.array([0, 0, 0]) # location relative to robot base frame in meters
 
-    image1[round(2.5 * distance_ratio) : round(2.5 * distance_ratio + 5), 0:5] = 0
+    # Hard code blue blow position from previous tasks with non black  joints
+    center_info_1[1,0] = 399
+    center_info_1[1,1] = 470
+    center_info_2[1,0] = 399
+    center_info_2[1,1] = 470
+    self.blob_location[1,:] = np.array([0, 0, 2.5]) # location relative to robot base frame in meters
 
-    cv2.imshow("thresholded", image1)
-    cv2.waitKey(1)
+    test = extension_chamfer_l2(self.cv_image1, self.distance_ratio, center_info_1[1,0], center_info_1[1,1])
 
     # Calculate distance ratio to be hard-coded assuming robot is in starting position (all joints are 0)
     # where_black = np.argwhere(image1)
@@ -125,29 +144,6 @@ class image_converter:
     #    self.blob_location[i,2] = -(center_info_2[i,1] - center_info_2[0,1] + center_info_1[i,1] - center_info_1[0,1])/ 2
 
     # self.blob_location *= self.distance_ratio
-
-    # Publishing target location
-    if self.distance_ratio is not None:
-      # Assume target is never obfuscated
-      target_info_2 = data.data[-2:] # [x,z] coordinate offrom camera 2
-      target_info_1 = detect_target_center(rgb_normalize(self.cv_image1)) # [y,z] coordinate from camera 2
-      self.target_location[0] = target_info_2[0] - center_info_2[0,0] # x coordinate relative to robot base frame
-      self.target_location[1] = target_info_1[0] - center_info_1[0,0] # y coordinate relative to robot base frame
-      self.target_location[2] = -(target_info_2[1] - center_info_2[0,1] + target_info_1[1] - center_info_1[0,1])/2 # z coordinate relative to robot base frame
-
-      self.target_location *= self.distance_ratio
-
-      self.target_x = Float64()
-      self.target_x.data = self.target_location[0]
-      self.target_x_publisher.publish(self.target_x)
-
-      self.target_y = Float64()
-      self.target_y.data = self.target_location[1]
-      self.target_y_publisher.publish(self.target_y)
-
-      self.target_z = Float64()
-      self.target_z.data = self.target_location[2]
-      self.target_z_publisher.publish(self.target_z)
 
     #self.angle_estimation()
 
@@ -548,6 +544,37 @@ def detect_target_center(image):
     cx = int(moments['m10']/moments['m00'])
     cy = int(moments['m01']/moments['m00'])
     return np.array([cx,cy])
+
+# Pass center of the blue joint as cx and cy
+def extension_chamfer_l2(image, distance_ratio, cx, cy):
+  thresholded = cv2.inRange(image, (0,0,0), (10,10,10))
+  thresholded = cv2.erode(thresholded, np.ones(3, np.uint8))
+  thresholded = cv2.dilate(thresholded, np.ones(3, np.uint8))
+
+  pixel_link_length = int(round(3 / distance_ratio)) # link length in pixels
+  y_min = int(cy - pixel_link_length - 10)
+  y_max = int(cy + 10)
+  x_min = int(cx - pixel_link_length - 10)
+  x_max = int(cx + pixel_link_length + 10)
+  cropped_thresholded = thresholded[y_min:y_max, x_min:x_max]
+
+  cv2.imshow("cropped thresholded", cropped_thresholded)
+  cv2.waitKey(1)
+
+  template_path = os.path.realpath("src/ivr_assignment/src/link2_template.png")
+  template = cv2.imread(template_path, 0)
+  modified_template = np.zeros((y_max - y_min, x_max - x_min))
+  y_min_template = modified_template.shape[0] - template.shape[0]
+  y_max_template = modified_template.shape[0]
+  x_min_template = int(round(modified_template.shape[1]/2 - template.shape[1]/2))
+  x_max_template = int(round(modified_template.shape[1]/2 + template.shape[1]/2))
+  modified_template[y_min_template:y_max_template, x_min_template:x_max_template] = template
+
+  cv2.imshow("modified_template", modified_template)
+  cv2.waitKey(1)
+
+  return 0
+
 
 
 # call the class
