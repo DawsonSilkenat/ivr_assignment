@@ -50,6 +50,13 @@ class image_converter:
     self.estimated_joint2_publisher = rospy.Publisher("/joint2/estimated_angle", Float64, queue_size = 1)
     self.estimated_joint3_publisher = rospy.Publisher("/joint3/estimated_angle", Float64, queue_size = 1)
     self.estimated_joint4_publisher = rospy.Publisher("/joint4/estimated_angle", Float64, queue_size = 1)
+
+    # initialize a publisher to publish the estimated end effector position
+    self.end_effector_x_publisher = rospy.Publisher("/robot/end_effector/x_location", Float64, queue_size = 1)
+    self.end_effector_y_publisher = rospy.Publisher("/robot/end_effector/y_location", Float64, queue_size = 1)
+    self.end_effector_z_publisher = rospy.Publisher("/robot/end_effector/z_location", Float64, queue_size = 1)
+    self.end_effector_location = np.zeros(3)
+
     # meter value of a single unit
     self.distance_ratio = None
 
@@ -235,6 +242,19 @@ class image_converter:
     self.joint2_pub.publish(self.joint2)
     self.joint3_pub.publish(self.joint3)
     self.joint4_pub.publish(self.joint4)
+
+    # Publish the estimated end effector position
+    self.end_effector_x = Float64()
+    self.end_effector_y = Float64()
+    self.end_effector_z = Float64()
+
+    self.end_effector_x.data = self.blob_location[3,0]
+    self.end_effector_y.data = self.blob_location[3,1]
+    self.end_effector_z.data = self.blob_location[3,2]
+
+    self.end_effector_x_publisher.publish(self.end_effector_x)
+    self.end_effector_y_publisher.publish(self.end_effector_y)
+    self.end_effector_z_publisher.publish(self.end_effector_z)
 
   def angle_estimation(self):
     # Can't easily find joint_angles[0] from blob detection, so assume it is known
