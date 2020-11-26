@@ -207,54 +207,12 @@ class image_converter:
     self.estimated_joint4.data = self.joint_angles[3]
     self.estimated_joint4_publisher.publish(self.estimated_joint4)
 
-  def im2_update(self,data):
-    test = 0
-    # Find Joint Positions when blobs are obfuscated
-    # Assumptions are as follows:
-    # Yellow blob will never be completely obfuscated
-    # The same blob will not be completely obfuscated in both cameras
+  #def im2_update(self,data):
 
-    #for i in range(1,len(center_info_1)):
-    #  if(center_info_1[i,0] != -1 and center_info_2[i,0] != -1):
-    #    self.blob_location[i,0] = center_info_2[i,0] - center_info_2[0,0]
-    #    self.blob_location[i,1] = center_info_1[i,0] - center_info_1[0,0]
-    #    self.blob_location[i,2] = -(center_info_2[i,1] - center_info_2[0,1] + center_info_1[i,1] - center_info_1[0,1])/ 2
-
-    # self.blob_location *= self.distance_ratio
-
-    #self.angle_estimation()
-
-    #print("%0.3f  %0.3f  %0.3f  %0.3f" % tuple(self.joint_angles)) # only looking at the first three decimal places so any noice seen is significant
-
-    # Publish joint angles for joints 2,3,4
-    #self.estimated_joint2 = Float64()
-    #self.estimated_joint2.data = self.joint_angles[1]
-    #self.estimated_joint2_publisher.publish(self.estimated_joint2)
-
-    #self.estimated_joint3 = Float64()
-    #self.estimated_joint3.data = self.joint_angles[2]
-    #self.estimated_joint3_publisher.publish(self.estimated_joint3)
-
-    #self.estimated_joint4 = Float64()
-    #self.estimated_joint4.data = self.joint_angles[3]
-    #self.estimated_joint4_publisher.publish(self.estimated_joint4)
-
-    # Closed Loop Control
-
-    #new_angles = self.closed_loop_control(self.target_location, self.joint_angles)
-    
-    # Publish the robot's new joint inputs
-    #self.joint2 = Float64()
-    #self.joint3 = Float64()
-    #self.joint4 = Float64()
-
-    #self.joint2.data = new_angles[0]
-    #self.joint3.data = new_angles[1]
-    #self.joint4.data = new_angles[2]
-
-    #self.joint2_pub.publish(self.joint2)
-    #self.joint3_pub.publish(self.joint3)
-    #self.joint4_pub.publish(self.joint4)
+  # IMPORTANT:
+  # ALL CODE FROM IM2_UPDATE WAS DELETED FOR THE QUESTION FROM SECTION 4.
+  # THIS CODE IS REQUIRED TO GET RESULTS FOR PREVIOUS SECTIONS IN THE ASSIGNMENT.
+  # SEE THE BRANCH NAMED "current" FOR THIS FUNCTIONALITY.
 
   def angle_estimation(self):
     # Can't easily find joint_angles[0] from blob detection, so assume it is known
