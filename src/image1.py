@@ -173,6 +173,12 @@ class image_converter:
 
     self.blob_location *= self.distance_ratio
 
+    # These locations will be used for hard-coding in the extension and the values returned are
+    # from the robot's starting position.
+    # print("Yellow Blob Pixel Position = ", center_info_1[0,0], center_info_2[0,0], (center_info_1[0,1] + center_info_2[0,1]) / 2) # Returns (399, 399, 533)
+    # print("Blue Blob Pixel Position = ", center_info_1[1,0], center_info_2[1,0], (center_info_1[1,1] + center_info_2[1,1]) / 2) # Returns (399, 399, 470)
+    # print("Distance Ratio = ", self.distance_ratio) # Returns 0.0387
+
     # Publishing target location
     if self.distance_ratio is not None:
       # Assume target is never obfuscated
